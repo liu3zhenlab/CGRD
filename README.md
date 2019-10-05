@@ -35,14 +35,14 @@ perl cgrd
 ```
 
 #### tested package versions:
-jellyfish-2.2.10
-bowtie-1.2.3
-bwa-0.7.17
-samtools-1.9
-bedtools-2.29.0
-pandoc-2.2.3.2-0
-r-base-3.6.1
-r-knitr-1.22
-dnacopy-1.58.0
+1. jellyfish-2.2.10
+2. bowtie-1.2.3
+3. bwa-0.7.17
+4. samtools-1.9
+5. bedtools-2.29.0
+6. pandoc-2.2.3.2-0
+7. r-base-3.6.1
+8. r-knitr-1.22
+9. dnacopy-1.58.0
 
 
