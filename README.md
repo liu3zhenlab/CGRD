@@ -3,6 +3,27 @@
 
 CGRD is a pipeline to compare sequencing read depths from two samples along a reference genome. Three major steps are involved: 1. define effective genomic bins each of which habors certain non-repetitive sequences 2. align reads and count read depths per bin for both samples 3. segmentation to combine neighbor bins with similar fold changes in read depth between the two samples. From the result, genomic segments with similar and differential (higher or lower) read depths are obtained. Therefore, genomic copy number variation (CNV) based on read depths can be extracted from the result and visualized on the genome map.
 
+### DATA REQUIREMENT
+1. reference genome (FASTA format)
+2. FASTQ reads or an sorted bam file of sample 1
+3. FASTQ reads or an sorted bam file of sample 2
+
+### GET STARTED
+Running is easy but might takes days if the genome is large and high-depth sequencing data are produced.
+
+If no BAM alignments are ready, run:
+```
+perl <path-to-cgrd>/cgrd --ref <fas> \
+  --sfq1 <subject fq1> --sfq2 <subject fq2> \
+  --qfq1 <query fq1> --qfq2 <query fq2>
+```
+
+If BAM alignments are ready, run:
+```
+perl <path-to-cgrd>/cgrd --ref <fas> \
+  --sbam <subject bam> --qbam <query bam>
+```
+
 ### INSTALLATION
 The following packages are required:
 1. jellyfish: to generate k-mers from a FASTA file
@@ -46,5 +67,3 @@ perl cgrd
 7. r-base-3.6.1
 8. r-knitr-1.22
 9. dnacopy-1.58.0
-
-
