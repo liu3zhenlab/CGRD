@@ -34,7 +34,7 @@ The following packages are required:
 5. bedtools: to determine read counts per genomic bin
 6. pandoc: to create a html report
 7. R: to perform CNV analysis and create a report
-8. R pakages: knitr, DNAcopy
+8. R pakages: rmarkdown, knitr, DNAcopy
 
 If all the packages are installed and commands are in the paths. You can directly copy CGRD for your uses.
 
@@ -49,7 +49,7 @@ perl cgrd
 conda create -n cgrd
 conda activate cgrd
 conda install -c bioconda jellyfish bowtie bwa samtools bedtools pandoc
-conda install r-base r-knitr
+conda install -c r r-base r-knitr r-rmarkdown
 conda install -c bioconda bioconductor-DNAcopy
 
 # after all the installation:
@@ -66,5 +66,6 @@ perl cgrd
 5. bedtools-2.29.0
 6. pandoc-2.2.3.2-0
 7. r-base-3.6.1
-8. r-knitr-1.22
-9. dnacopy-1.58.0
+8. r-rmarkdown-1.12
+9. r-knitr-1.22
+10. dnacopy-1.58.0
