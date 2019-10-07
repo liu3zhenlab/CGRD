@@ -7,7 +7,9 @@ CGRD is a pipeline to compare sequencing read depths from two samples along a re
 1. reference genome (FASTA format)
 2. FASTQ reads or an sorted BAM file of sample 1
 3. FASTQ reads or an sorted BAM file of sample 2  
-**Note**: If BAM files were provided, BAM index files are located at the same directory as BAM files.
+**Note**:  
+- If BAM files were provided, BAM index files are located at the same directory as BAM files.
+- FASTQ data are whole genome sequencing data. The higher sequencing depth is, the smaller the bin size could be.
 
 ### GET STARTED
 Running is easy but might takes days if the genome is large and high-depth sequencing data are produced.
