@@ -1,0 +1,239 @@
+---
+title: "Segmentation of bin read counts"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+params:
+  subj: null
+  qry: null
+  bc: null
+  libsizef: null
+  chrsizef: null
+  groupval: null
+  outfile: null
+  version: null
+output:
+  html_document: default
+---
+
+```{r parameters, echo = FALSE}
+subj <- params$subj
+qry <- params$qry
+bc <- params$bc
+groupval <- params$groupval
+libsizef <- params$libsizef
+chrsizef <- params$chrsizef
+outfile <- params$outfile
+version <- params$version
+```
+
+
+```{r, echo = FALSE }
+library("DNAcopy")
+
+xunit <- 1000000 # bp
+groupval <- strsplit(groupval, " +")[[1]]
+groupval <- as.numeric(groupval)
+
+sysinfo <- sessionInfo()$R.version
+sysinfo$version.string
+sysinfo$platform
+sysinfo$system
+
+```
+#### Running environment
+R version: `r sysinfo$version.string`
+Platform and OS system: `r sysinfo$platform` and `r sysinfo$system`
+
+
+```{r modules, echo = FALSE }
+################
+# draw axis line
+################
+plotaxis <- function(x, y, at.ticks=NULL, ticklen=NULL, tick.labs=NULL,
+                     at.sub=NULL, sublen=NULL, labeltext) {
+  lines(x, y, xpd = 1, col = "gray50")
+  # ticks and subticks
+  if (!is.null(at.ticks)) {
+    if (is.null(tick.labs)) {
+      tick.labs <- at.ticks
+    }
+    for (i in 1:length(at.ticks)) {  # ticks
+      lines(c(x[1]-ticklen, x[1]), rep(at.ticks[i], 2), xpd = 1, col = "gray30")
+      text(x=x[1]-ticklen, y=at.ticks[i], labels=tick.labs[i], xpd = 1, pos = 2, cex=0.9)
+    }
+  }
+  text(x[1]-8*ticklen, mean(range(at.ticks)) + 2, labels=labeltext, xpd=1, pos=2)
+  # sub ticks
+  if (!is.null(at.sub)) {
+    for (i in 1:length(at.sub)) {
+      lines(x=c(x[1], x[1]-sublen), y=rep(at.sub[i], 2), col = "gray30")
+    }
+  }
+}
+
+
+################
+# draw lines
+################
+linedraw <- function(d, xunit = 1, yadjust, color = "grey60", lend.val = 1, lwd.val = 2) {
+# function to draw segment lines
+  xvals <- d[1:2] / xunit
+  yvals <- rep(d[3], 2) + yadjust
+  lines(xvals, yvals, lwd = lwd.val, lend = lend.val, col = color)
+}
+```
+
+```{r, echo = FALSE, fig.align='center', fig.cap="Fig 1. histogram", fig.height=4, fig.width= 8}
+#######################################
+# step1: loading data
+#######################################
+bincount <- read.delim(bc, header = F)
+colnames(bincount) <- c("Chr", "Start", "End", "Order", subj, qry)
+bincount$Bin <- paste0(bincount$Chr, "_", bincount$Start, "-", bincount$End)
+bincount$Pos <- round((bincount$Start + bincount$End) / 2, 0)
+
+### chr/ctg sizes:
+chrsize <- read.delim(chrsizef, header = F)
+colnames(chrsize) <- c("Chr", "Len")
+
+### libsize
+libsize <- read.delim(libsizef)
+subj.libsize <- libsize[libsize$sample == subj, "reads"]
+qry.libsize <- libsize[libsize$sample == qry, "reads"]
+
+#######################################
+# step2: bincount data qrycountloration
+#######################################
+subj.rd <- bincount[, subj]
+low.bound <- quantile(subj.rd, 0.005)
+up.bound <- quantile(subj.rd, 0.995)
+bincountsub <- bincount[bincount[, subj] >= low.bound & bincount[, subj] <= up.bound, c("Bin", "Chr", "Pos", subj, qry)]
+bincountsub$log2fc <- log2((bincountsub[, qry] + 1) / (bincountsub[, subj] + 1) / qry.libsize * subj.libsize)
+
+### histogram
+xlabel <- paste0("Log2(", qry, ":", subj, ")")
+hist(bincountsub$log2fc, nclass = 500, xlab = xlabel,
+     ylab = "Number of Bins", main = paste0(qry, " vs. ", subj))
+abline(v=0, col = "red")
+
+#######################################
+# step2b: segmentation
+#######################################
+log2fc <- bincountsub[,c("Chr", "Pos", "log2fc")]
+
+# segmentation:
+cna <-CNA(log2fc$log2fc, log2fc$Chr, log2fc$Pos, data.type ="logratio", sampleid = "qrycount")
+cna.smooth <- smooth.CNA(cna, smooth.region = 10, outlier.SD.scale = 4,
+                         smooth.SD.scale = 2, trim = 0.01)
+
+# core step for the segmentation:
+cna.seg <- segment(cna.smooth, alpha=0.005, nperm=10000, p.method="perm",
+                   eta=0.005, min.width=3, undo.splits = "sdundo", undo.SD = 3)
+
+# output:
+seg <- cna.seg$output
+
+#######################################
+# step3: adjust coordinates
+#######################################
+### refine the segment starting and ending positions:
+seg2 <- seg
+seg$Order <- 1:nrow(seg)
+start.pos <- merge(seg[, c("chrom", "loc.start", "Order")],
+                   bincount[, c("Chr", "Start", "Pos")],
+                   by.x = c("chrom", "loc.start"), by.y = c("Chr", "Pos"))
+start.pos <- start.pos[order(start.pos$Order), ]
+head(start.pos)
+seg2$loc.start <- start.pos$Start
+end.pos <- merge(seg[, c("chrom", "loc.end", "Order")], 
+                 bincount[, c("Chr", "End", "Pos")],
+                 by.x = c("chrom", "loc.end"), by.y = c("Chr", "Pos"))
+end.pos <- end.pos[order(end.pos$Order), ]
+seg2$loc.end <- end.pos$End
+seg2 <- seg2[, -c(1,7)]
+segmean.label <- paste0(qry, ":", subj, "_log2fc")
+colnames(seg2) <- c("Chr", "Start", "End", "NumBin", segmean.label)
+
+#######################################
+# grouping segments based segmean
+#######################################
+seg2$Group <- "ungrouped"
+up.group <- (seg2[, segmean.label] >= groupval[4])
+seg2[up.group, "Group"] <- paste0(qry, ">", subj) # up
+dn.group <- (seg2[, segmean.label] <= groupval[1])
+seg2[dn.group, "Group"] <- paste0(qry, "<", subj) # dn
+eq.group <- (seg2[, segmean.label] >= groupval[2] & seg2[, segmean.label] <= groupval[3])
+seg2[eq.group, "Group"] <- paste0(qry, "=", subj) # eq
+
+#######################################
+# output:
+#######################################
+write.table(seg2, file=outfile, row.names=F, col.names=F, quote=F, sep="\t")
+```
+
+
+```{r, echo = FALSE, fig.align='center', fig.cap="Fig 2. CGRD", fig.height=4, fig.width= 8}
+#######################################
+### output image:
+#######################################
+plot.file <- paste0(qry, "_", subj, "cgrd.pdf")
+par(mfrow=c(1,1))
+offset <- 14
+chrs <- as.character(unique(seg2$Chr))
+num.chrs <- length(chrs)
+
+### save
+pdf(plot.file, width=7.5, height=7.5)
+
+xmax <- max(chrsize$Len)/xunit
+
+par(mar = c(4.5, 5, 3.5, 1))
+plot(NULL,NULL,
+     xlim=c(-0.02 * xmax, xmax),
+     ylim=c(-12, num.chrs * offset - offset + 1),
+     main=paste(qry, "vs", subj), cex.main=1.2,
+     bty="n", type="n", yaxt="n",
+     xlab="Physical coordinate (Mb)", ylab="",
+     cex.axis = 1.2, cex.lab = 1.2)
+mtext(text = paste0("log2(", qry, ":", subj, ")"), side = 2, line = 3.5, cex = 1.2, at = mean(c(0, num.chrs * offset - offset + 1)))
+### plot all chrs and ctgs:
+for (j in 1:num.chrs) { # all chrs / contigs
+  dp <- seg2[seg2$Chr == chrs[j], ] # plot set
+  
+  shift <- offset * (num.chrs - j)
+  # plot each bins:
+  for (i in c(-6:3)) {
+    lines(c(0, xmax), y = rep(shift + i, 2), col = "grey")
+  }
+  
+  # draw lines of segments
+  apply(dp[, c("Start", "End", segmean.label)], 1, linedraw, xunit = xunit, yadjust = shift, color = "grey30")
+  # up
+  up.group <- dp[, segmean.label] >= groupval[4]
+  # down
+  dn.group <- dp[, segmean.label] <= groupval[1]
+  # conserved:
+  eq.group <- dp[, segmean.label] >= groupval[2] & dp[, segmean.label] <= groupval[3]
+  
+  # lines
+  line.lwd = 3
+  apply(dp[, c("Start", "End", segmean.label)], 1, linedraw, xunit = xunit, yadjust = shift, lwd.val = 2.5, color = "grey30")
+  apply(dp[eq.group, c("Start", "End", segmean.label)], 1, linedraw, xunit = xunit,
+        yadjust = shift, lwd.val = line.lwd, color = "dark green")
+  apply(dp[up.group, c("Start", "End", segmean.label)], 1, linedraw, xunit = xunit,
+        yadjust = shift, lend.val = 2, lwd.val = line.lwd, color = "red")
+  apply(dp[dn.group, c("Start", "End", segmean.label)], 1, linedraw, xunit = xunit,
+        yadjust = shift, lend.val = 2, lwd.val = line.lwd, color = "blue")
+  # plot yaxis
+  yaxis.pos <- c(-6, -3, 0, 3)
+  label.pos <- c(-6, -3, 0, 3)
+  plotaxis(x=rep(-xmax * 0.02, length(yaxis.pos)), y= yaxis.pos+shift,
+           at.ticks=yaxis.pos+shift, ticklen=xmax/200, tick.labs=label.pos,
+           labeltext=chrs[j])
+  
+}
+
+text(c(0, xmax/4, xmax/2, xmax*3/4), y=rep(-12, 4), labels = c(paste(qry, c(">", "=", "<"), subj), "ungrouped"),
+     col = c("red", "dark green", "blue", "grey30"), pos = 4)
+
+dev.off()
+```

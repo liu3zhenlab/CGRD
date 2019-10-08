@@ -1,0 +1,410 @@
+#!/use/bin/perl -w
+#=============================================================
+# cgrd
+# author: Sanzhen Liu (liu3zhen@ksu.edu)
+# 10/3/2019
+# comparative genomic read depths (CGRD)
+#=============================================================
+
+use strict;
+use warnings;
+use Getopt::Long;
+use File::Temp;
+use FindBin;
+use lib "$FindBin::Bin/lib";
+
+my $version = "0.01";
+my $klen = 31;
+
+sub prompt {
+	print <<EOF;
+	Usage: cgrd [options]
+	[Options]
+	--ref <file>        reference genome FASTA file; required
+	--subj <str>        name of subject sample; required
+	--sfq1 <file>       1st PE FASTQ file of subject sample;
+	                    required if --sbam is not provided.
+	--sfq2 <file>       2nd PE FASTQ file of subject sample;
+	                    --sfq1 will be treated as SE if --sfq2 is not provided.
+	--sbam <file>       BAM alignment file; if provided, --sfq1 and --sfq2 will be ignored.
+	--qry <str>         name of query sample; required
+	--qfq1 <file>       1st PE FASTQ file of query sample;
+	                    required if qbam is not provided
+	--qfq2 <file>       2nd PE FASTQ file of query sample;
+	                    --qfq1 will be treated as SE if --qfq2 is not provided.
+	--qbam <file>       BAM alignment file; if provided, --qfq1 and --qfq2 will be ignaored.
+	--binbed <file>     user specified BED file of bins for read count;
+	                    if --binbed is provided, ignore --knum.
+	--knum <num>        number of unique k-mers for a bin (300)
+	--groupval <numstr> 4 numbers for segment grouping separated by space ("-5, -0.2, 0.2, 0.6")
+	--prefix <str>      prefix for outputs (cgrdo)
+	--threads <num>     number of threads (1)
+	--samfilt <str>     parameters of SAM filter ("--identical 60 --mismatch 5 100 --tail 5 100 --insert 100 1000")
+	--version           version
+	--help              help information
+	
+	o example:
+	perl cgrd --ref <fas> \
+		 --subj s1 --sfq1 s1_1.fq --sfq2 s1_2.fq \
+		 --qry s2 --qfq1 s2_1.fq --qfq2 s2_2.fq
+EOF
+exit;
+}
+
+my $knum = 300; # a bin contain 300 uniquely mapped k-mers 
+my $prefix = "cgrdo"; # default prefix for outputs
+my $threads = 1; # number of threads used for jellyfish, bowtie, and samtools
+my $samfilt = "--identical 60 --mismatch 5 100 --tail 5 100 --insert 100 1000"; # filter parameters
+my $groupval = "-5, -0.2, 0.2, 0.6";
+my ($ref, $subj, $sfq1, $sfq2, $sbam);
+my ($qry, $qfq1, $qfq2, $qbam, $binbed);
+my ($help);
+
+#############
+# parameters
+############# 
+my %opts = ();
+&GetOptions(\%opts, "ref=s", "subj=s", "qry=s", "version=s",
+                    "sfq1=s", "sfq2=s", "qfq1=s", "qfq2=s",
+					"sbam=s", "qbam=s", "knum=i", "binbed=s",
+					"threads=i", "prefix=s", "samfilt=s", "help");
+
+if (exists $opts{version}) { 
+	print "$0 $version\n";
+	exit;
+}
+
+&prompt if exists $opts{help} or !%opts;
+$ref = $opts{ref} if exists $opts{ref};
+$subj = $opts{subj} if exists $opts{subj};
+$qry = $opts{qry} if exists $opts{qry};
+$sfq1 = $opts{sfq1} if exists $opts{sfq1};
+exists $opts{sfq2} ? $sfq2 = $opts{sfq2} : $sfq2 = "";;
+$qfq1 = $opts{qfq1} if exists $opts{qfq1};
+exists $opts{qfq2} ? $qfq2 = $opts{qfq2} : $qfq2 = "";
+$sbam = $opts{sbam} if exists $opts{sbam};
+$qbam = $opts{qbam} if exists $opts{qbam};
+$binbed = $opts{binbed} if exists $opts{binbed};
+$threads = $opts{threads} if exists $opts{threads};
+$samfilt = $opts{samfilt} if (exists $opts{samfilt});
+$prefix = $opts{prefix} if (exists $opts{prefix});
+$groupval = $opts{groupval} if (exists $opts{groupval});
+$groupval =~ s/^ +//g; # remove space at the beginning
+$groupval =~ s/ +$//g; # remove space at the end
+$groupval =~ s/,/ /g; # replace , with a space
+my @groupval = split(" ", $groupval);
+if ($#groupval != 3) {
+	print STDERR "--groupval must have 4 numbers";
+	exit;
+}
+
+if (!defined $sbam and !defined $sfq1) {
+	print STDERR "--sbam or --sfq1 is needed\n"; 
+	exit;
+}
+
+if (!defined $qbam and !defined $qfq1) {
+	print STDERR "--qbam or --qfq1 is needed\n";
+	exit;
+}
+
+if (!defined $ref or !defined $subj or !defined $qry) {
+	print STDERR "--ref, --subj, --qry are required\n";
+	exit;
+}
+
+#############
+# scripts
+#############
+# script path:
+my $scriptPath = $FindBin::Bin;
+my $binPath = $scriptPath."/bin/";
+
+#############
+# output
+#############
+if (-d $prefix) {
+	print STDERR "$prefix exists!\n";
+	#exit;
+} else {
+	`mkdir $prefix`;
+}
+
+#log file
+my $runlog = $prefix.".run.log";
+open(LOG, ">$runlog") || die;
+
+##############
+# 1. bin
+##############
+if (!defined $binbed) {
+# fas2kmer
+	&runreport("generating k-mers from reference");
+	my $kfas_file=$prefix."/".$prefix."_1a_uniqkmer.fas";
+	&kgen($ref, $prefix, $kfas_file);
+
+# kmer mapping
+	&runreport("mapping k-mers to reference");
+	my $kpos_file=$prefix."/".$prefix."_1b_uniqkmer.pos";
+	&map2ref($kfas_file, $ref, $prefix, $kpos_file);
+
+# bin
+	&runreport("generaring bin BED file");
+	my $bin_bedfile=$prefix."/".$prefix."_1c_bin.bed";
+	&pos2bin($kpos_file, $knum, $bin_bedfile);
+
+	$binbed = $bin_bedfile; # Bin file
+} else {
+	print LOG "the following binBED file was provided:\n";
+	print LOG "  $binbed\n";
+}
+
+##############
+# reads to bam 
+##############
+# library size: uniquely mapped reads
+my $libsizef = $prefix."/libsize.txt";
+if (-f $libsizef) {
+	`rm $libsizef`;
+}
+open(LS, ">$libsizef") || die;
+print LS "sample\treads\n";
+
+# bwa index
+my $bwa_dbidx = $prefix."/bwa";
+if (!defined $sbam or !defined $qbam) {
+	&runreport("bwa indexing");
+	if (! -d $bwa_dbidx) {
+		`mkdir $bwa_dbidx`;
+	}
+	`bwa index -p $bwa_dbidx/ref $ref`;
+}
+
+# subj bwa alignments:
+my $subj_aln=$prefix."/".$prefix."_2a_".$subj;
+my $subj_libsize;
+if (!defined $sbam) {
+	&runreport("subj alignment");
+	`bwa mem -t $threads -T 40 -S $bwa_dbidx/ref $sfq1 $sfq2 > $subj_aln`;
+	`perl $scriptPath/utils/samparser.pl -i $subj_aln --libsize $subj_aln.libsize $samfilt > $subj_aln.filt`;
+	&samfilt2bam($subj_aln); # filter and convert aln to BAM
+	# cleanup
+	`rm $subj_aln; rm $subj_aln.filt`;
+
+	$sbam = $subj_aln.".bam"; # subj BAM
+
+	# output library size:
+	$subj_libsize = `cat $subj_aln.libsize`;
+} else {
+	print LOG "the following subjBAM was provide:\n";
+	print LOG "  $sbam\n";
+	$subj_libsize=`samtools flagstat -@ $threads $sbam | grep mapped | head -n 1 | sed 's/ .*//g'`;
+}
+chomp($subj_libsize);
+print LS "$subj\t$subj_libsize\n";
+
+# qry bwa alignments:
+my $qry_aln=$prefix."/".$prefix."_2b_".$qry;
+my $qry_libsize;
+if (!defined $qbam) {
+	&runreport("query alignment");
+	`bwa mem -t $threads -T 40 -S $bwa_dbidx/ref $qfq1 $qfq2 > $qry_aln`;
+	`perl $scriptPath/utils/samparser.pl -i $qry_aln --libsize $qry_aln.libsize $samfilt > $qry_aln.filt`;
+	&samfilt2bam($qry_aln); # filter and convert aln to BAM	
+	# cleanup
+	`rm $qry_aln; rm $qry_aln.filt`;
+	
+	$qbam = $qry_aln.".bam"; # qry BAM
+	
+	# output library size:
+	$qry_libsize = `cat $qry_aln.libsize`;
+} else {
+	print LOG "the following qryBAM was provide:\n";
+	print LOG "  $qbam\n";
+	$qry_libsize = `samtools flagstat -@ $threads $qbam | grep mapped | head -n 1 | sed 's/ .*//g'`;
+}
+
+chomp($qry_libsize);
+print LS "$qry\t$qry_libsize\n";
+close LS;
+
+##############
+# read counts
+##############
+&runreport("Bedtools counting");
+my $bincount_file = $prefix."/".$prefix."_3_bin.counts";
+`bedtools multicov -bams $sbam $qbam -bed $binbed > $bincount_file`;
+
+##############
+# chrsize
+##############
+my $chrsizef = $prefix."/chrsize.txt";
+`perl $scriptPath/utils/fastaSize.pl $ref > $chrsizef`;
+
+##############
+# cnv and report
+##############
+
+my $rmd = $scriptPath."\/utils\/rdseg.Rmd";
+my $htmlout = $prefix."_".$qry."_".$subj.".report.html";
+my $outfile  = $prefix."_".$qry."_".$subj."segments.txt";
+my $tmpRscript = $prefix."/".$prefix."_X_Rmd.render.R";
+open(TMPR, ">$tmpRscript") || die;
+print TMPR "library\(rmarkdown\)\n";
+print TMPR "library\(knitr\)\n";
+print TMPR "\n";
+print TMPR "render\(\'$rmd\',\n";
+print TMPR "  params = list(\n";
+print TMPR "    version=\"$version\",\n";
+print TMPR "    subj=\"$subj\",\n";
+print TMPR "    qry=\"$qry\",\n";
+print TMPR "    bc=\"$bincount_file\",\n";
+print TMPR "    libsizef=\"$libsizef\",\n";
+print TMPR "    chrsizef=\"$chrsizef\",\n";
+print TMPR "    outfile=\"$outfile\",\n";
+print TMPR "    groupval=\"$groupval\"\),\n";
+print TMPR "  knit_root_dir=getwd\(\),\n";
+print TMPR "  output_dir=getwd\(\),\n";
+print TMPR "  output_format=\"html_document\",\n";
+print TMPR "  output_file=\"$htmlout\"\)\n";
+close TMPR;
+
+# render R
+`Rscript $tmpRscript`;
+
+close LOG;
+
+###############################################
+# module 0: report running result
+################################################
+# funtion to report running return
+sub runreport {
+	my $injob = shift;
+	my $dateinfo = `date +'o %Y-%m-%d %H:%M:%S'`;
+	print STDERR "$dateinfo";
+	print STDERR "  $injob.\n";
+	print LOG "$dateinfo  ";	
+	print LOG "  $injob.\n";
+}
+
+
+###############################################
+# module 1: kgen
+###############################################
+sub kgen {
+	# fasta/q to kmer table
+	my ($infile, $inprefix, $fas_out) = @_;
+	my $infile_to_feed = $infile;
+	
+	# try to recognize gz files, unzip them and read
+	if ($infile =~ /gz$/) {
+		#### suffix
+		my $ori_suffix = $infile;
+		$ori_suffix =~ s/.gz$//g;
+		$ori_suffix =~ s/.*\.//g;
+		#### unzip to a new temp file
+		my $infile_tmp = $inprefix."/".${inprefix}."_1_".${ori_suffix}.".tmp";
+		`gunzip -c $infile > $infile_tmp`; # unzip
+		$infile_to_feed = $infile_tmp;
+	}
+	
+	# generate fasta file
+	print STDERR "    $infile_to_feed\n";
+	#print LOG "input reference file is:\n";
+	print LOG "    $infile_to_feed\n";
+
+	`jellyfish count -C -s 1000M -m $klen -t $threads -o $fas_out.jf $infile_to_feed`;
+
+	`jellyfish dump -t -c -L 1 -U 1 -o $fas_out.txt $fas_out.jf`;
+	
+	my $txt2fas_para = "\"\>c\"NR\"\\n\"\$1";
+	`awk '{ print $txt2fas_para }' $fas_out.txt > $fas_out`;
+		
+	# cleanup
+	`rm $fas_out.jf`;
+	`rm $fas_out.txt`;
+	if ($infile_to_feed ne $infile) {
+		`rm $infile_to_feed`;
+	}
+}
+
+###############################################
+# module 2: map2ref
+###############################################
+sub map2ref {
+# map kmer fas to ref
+# output mapping positions of kmers
+	my ($infas, $inref, $inprefix, $outkpos) = @_;
+	# index directory:
+	my $bowtie_dbidx = $prefix."/bowtie";
+	if (! -d $bowtie_dbidx) {
+		`mkdir $bowtie_dbidx`;
+	}
+	`bowtie-build $inref $bowtie_dbidx/ref`; # index
+	# alignment:
+	`bowtie -f -n 0 -v 0 --quiet --no-unal -B 1 --sam --sam-nohead -f $bowtie_dbidx/ref $infas | cut -f 3,4 | sort -k1,1 -k2n,2 > $outkpos`;
+	`rm $bowtie_dbidx -r`; # cleanup
+}
+
+
+###############################################
+# module 3: pos2bin
+###############################################
+sub pos2bin {
+	my ($inkpos, $inknum, $outbinbed) = @_;
+	
+	my $binnum = 0;
+	open(MODOUT, ">$outbinbed") || die;
+	
+	my $incount = 0;
+	my $prechr = "";
+	my ($start, $end);
+	open(MODIN, $inkpos) || die;
+	while (<MODIN>) {
+		my ($inchr, $pos) = split;
+		if ($inchr eq $prechr) {
+			$incount++;
+			if ($incount == $inknum) {
+				$binnum++;
+				my $ad_start = $start - 1; # adjust 1 for BED output
+				print MODOUT "$inchr\t$ad_start\t$pos\t$binnum\n"; # BED format
+				$incount = 0;
+			} elsif ($incount == 1) {
+				$start = $pos;
+			}
+		} else { # new chr or 1st chr
+			if ($incount >= $inknum * 0.6) { # last bin of teh previous chr
+				$binnum++;
+				my $ad_start = $start - 1; # adjust 1 for BED output
+				print MODOUT "$prechr\t$ad_start\t$end\t$binnum\n"; # BED format
+			}
+			$incount = 0;
+			$start = $pos;
+		}
+		
+		$prechr = $inchr;
+		$end = $pos;
+	}
+
+	close MODIN;
+	close MODOUT;
+}
+
+###############################################
+# module 4: SAM2BAM
+###############################################
+sub samfilt2bam {
+	my $insam = shift;
+	`samtools view -b -h -@ $threads $insam.filt > $insam.tmp`;
+	`samtools sort -o $insam.bam -@ $threads $insam.tmp`;
+	`samtools index $insam.bam`;
+	`rm $insam.tmp`;
+}
+
+###############################################
+# module 5: bedtools
+###############################################
+sub xxx {
+
+}
+
