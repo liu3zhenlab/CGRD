@@ -1,0 +1,218 @@
+#!/use/bin/perl -w
+#=============================================================
+# gebin
+# author: Sanzhen Liu (liu3zhen@ksu.edu)
+# 10/3/2019
+# Genomic Effective Bins (gebin)
+#=============================================================
+
+use strict;
+use warnings;
+use Getopt::Long;
+use File::Temp;
+use FindBin;
+
+my $version = "0.01";
+my $klen = 31;
+
+sub prompt {
+	print <<EOF;
+	Usage: perl gebin [options]
+	[Options]
+	--ref <file>    reference genome FASTA file; required
+	--knum <num>    number of unique k-mers for a bin (300)
+	--prefix <str>  prefix for outputs (gebino)
+	--threads <num> number of threads (1)
+	--version       version
+	--help          help information
+	
+	o example:
+	gebin --ref <fas>
+EOF
+exit;
+}
+
+my $knum = 300; # a bin contain 300 uniquely mapped k-mers 
+my $prefix = "gebino"; # default prefix for outputs
+my $threads = 1; # number of threads used for jellyfish, bowtie, and samtools
+
+my ($ref, $help);
+
+#############
+# parameters
+############# 
+my %opts = ();
+&GetOptions(\%opts, "ref=s", "version=s", "prefix=s",
+					"knum=i", "threads=i", "help");
+
+if (exists $opts{version}) { 
+	print "$0 $version\n";
+	exit;
+}
+
+&prompt if exists $opts{help} or !%opts;
+$ref = $opts{ref} if exists $opts{ref};
+$prefix = $opts{prefix} if exists $opts{prefix};
+$threads = $opts{threads} if exists $opts{threads};
+
+if (!defined $ref) {
+	print STDERR "--ref is required\n";
+	exit;
+}
+
+#############
+# scripts
+#############
+# script path:
+my $scriptPath = $FindBin::Bin;
+my $binPath = $scriptPath."/bin/";
+
+#############
+# output
+#############
+
+if (-d $prefix) {
+	print STDERR "$prefix exists!\n";
+	#exit;
+} else {
+	`mkdir $prefix`;
+}
+
+#log file
+my $runlog = $prefix."/".$prefix."_0_gbin.log";
+open(LOG, ">$runlog") || die;
+
+##############
+# 1. bin
+##############
+if (!defined $bin) {
+# fas2kmer
+	my $kfas_file=$prefix."/".$prefix."_1a_uniqkmer.fas";
+	&kgen($ref, $prefix, $kfas_file);
+	&runreport("generating k-mers from reference");
+
+# kmer mapping
+	my $kpos_file=$prefix."/".$prefix."_1b_uniqkmer.pos";
+	&map2ref($kfas_file, $ref, $prefix, $kpos_file);
+	&runreport("mapping k-mers to reference");
+
+# bin
+	my $bin_bedfile=$prefix."/".$prefix."_1c_bin.bed";
+	&pos2bin($kpos_file, $knum, $bin_bedfile);
+	&runreport("generaring bin BED file");
+}
+
+close LOG;
+
+###############################################
+# module 0: report running result
+################################################
+# funtion to report running return
+sub runreport {
+	my $injob = shift;
+	my $dateinfo = `date +'o %Y-%m-%d %H:%M:%S'`;
+	print LOG "$dateinfo  ";	
+	print LOG "  $injob completed.\n";
+}
+
+
+###############################################
+# module 1: kgen
+###############################################
+sub kgen {
+	# fasta/q to kmer table
+	my ($infile, $inprefix, $fas_out) = @_;
+	my $infile_to_feed = $infile;
+	
+	# try to recognize gz files, unzip them and read
+	if ($infile =~ /gz$/) {
+		#### suffix
+		my $ori_suffix = $infile;
+		$ori_suffix =~ s/.gz$//g;
+		$ori_suffix =~ s/.*\.//g;
+		#### unzip to a new temp file
+		my $infile_tmp = $inprefix."/".${inprefix}."_1_".${ori_suffix}.".tmp";
+		`gunzip -c $infile > $infile_tmp`; # unzip
+		$infile_to_feed = $infile_tmp;
+	}
+	
+	# generate fasta file
+	print STDERR "$infile_to_feed\n";
+	`$binPath/jellyfish count -C -s 1000M -m $klen -t $threads -o $fas_out.jf $infile_to_feed`;
+
+	`$binPath/jellyfish dump -t -c -L 1 -U 1 -o $fas_out.txt $fas_out.jf`;
+	
+	my $txt2fas_para = "\"\>c\"NR\"\\n\"\$1";
+	`awk '{ print $txt2fas_para }' $fas_out.txt > $fas_out`;
+		
+	# cleanup
+	`rm $fas_out.jf`;
+	`rm $fas_out.txt`;
+	if ($infile_to_feed ne $infile) {
+		`rm $infile_to_feed`;
+	}
+}
+
+###############################################
+# module 2: map2ref
+###############################################
+sub map2ref {
+# map kmer fas to ref
+# output mapping positions of kmers
+	my ($infas, $inref, $inprefix, $outkpos) = @_;
+	# index directory:
+	my $bowtie_dbidx = $prefix."/bowtie";
+	if (! -d $bowtie_dbidx) {
+		`mkdir $bowtie_dbidx`;
+	}
+	`$binPath/bowtie/bowtie-build $inref $bowtie_dbidx/ref`; # index
+	# alignment:
+	`$binPath/bowtie/bowtie -f -n 0 -v 0 --quiet --no-unal -B 1 --sam --sam-nohead -f $bowtie_dbidx/ref $infas | cut -f 3,4 | sort -k1,1 -k2n,2 > $outkpos`;
+	#`rm $bowtie_dbidx -r`; # cleanup
+}
+
+
+###############################################
+# module 3: pos2bin
+###############################################
+sub pos2bin {
+	my ($inkpos, $inknum, $outbinbed) = @_;
+	
+	my $binnum = 0;
+	open(MODOUT, ">$outbinbed") || die;
+	
+	my $incount = 0;
+	my $prechr = "";
+	my ($start, $end);
+	open(MODIN, $inkpos) || die;
+	while (<MODIN>) {
+		my ($inchr, $pos) = split;
+		if ($inchr eq $prechr) {
+			$incount++;
+			if ($incount == $inknum) {
+				$binnum++;
+				my $ad_start = $start - 1; # adjust 1 to match BED format
+				print MODOUT "$inchr\t$ad_start\t$pos\t$binnum\n"; # BED format
+				$incount = 0;
+			} elsif ($incount == 1) {
+				$start = $pos;
+			}
+		} else { # new chr or 1st chr
+			if ($incount >= $inknum * 0.6) { # last bin of teh previous chr
+				$binnum++;
+				my $ad_start = $start - 1; # adjust 1 to match BED format
+				print MODOUT "$prechr\t$ad_start\t$end\t$binnum"; # BED format
+			}
+			$incount = 0;
+			$start = $pos;
+		}
+		
+		$prechr = $inchr;
+		$end = $pos;
+	}
+
+	close MODIN;
+	close MODOUT;
+}
+
+

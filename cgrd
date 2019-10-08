@@ -11,14 +11,14 @@ use warnings;
 use Getopt::Long;
 use File::Temp;
 use FindBin;
-use lib "$FindBin::Bin/lib";
+#use lib "$FindBin::Bin/lib";
 
 my $version = "0.01";
 my $klen = 31;
 
 sub prompt {
 	print <<EOF;
-	Usage: cgrd [options]
+	Usage: perl cgrd [options]
 	[Options]
 	--ref <file>        reference genome FASTA file; required
 	--subj <str>        name of subject sample; required
@@ -399,12 +399,5 @@ sub samfilt2bam {
 	`samtools sort -o $insam.bam -@ $threads $insam.tmp`;
 	`samtools index $insam.bam`;
 	`rm $insam.tmp`;
-}
-
-###############################################
-# module 5: bedtools
-###############################################
-sub xxx {
-
 }
 
