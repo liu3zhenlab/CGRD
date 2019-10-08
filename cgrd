@@ -36,7 +36,7 @@ sub prompt {
 	--binbed <file>     user specified BED file of bins for read count;
 	                    if --binbed is provided, ignore --knum.
 	--knum <num>        number of unique k-mers for a bin (300)
-	--groupval <numstr> 4 numbers for segment grouping separated by space ("-5, -0.2, 0.2, 0.6")
+	--groupval <numstr> 4 numbers for segment grouping separated by space ("-5 -0.2 0.2 0.6")
 	--prefix <str>      prefix for outputs (cgrdo)
 	--threads <num>     number of threads (1)
 	--samfilt <str>     parameters of SAM filter ("--identical 60 --mismatch 5 100 --tail 5 100 --insert 100 1000")
@@ -55,7 +55,7 @@ my $knum = 300; # a bin contain 300 uniquely mapped k-mers
 my $prefix = "cgrdo"; # default prefix for outputs
 my $threads = 1; # number of threads used for jellyfish, bowtie, and samtools
 my $samfilt = "--identical 60 --mismatch 5 100 --tail 5 100 --insert 100 1000"; # filter parameters
-my $groupval = "-5, -0.2, 0.2, 0.6";
+my $groupval = "-5 -0.2 0.2 0.6";
 my ($ref, $subj, $sfq1, $sfq2, $sbam);
 my ($qry, $qfq1, $qfq2, $qbam, $binbed);
 my ($help);
