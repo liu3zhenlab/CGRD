@@ -8,6 +8,7 @@ params:
   libsizef: null
   chrsizef: null
   groupval: null
+  newgrouplab: null
   outfile: null
   version: null
 output:
@@ -19,6 +20,7 @@ subj <- params$subj
 qry <- params$qry
 bc <- params$bc
 groupval <- params$groupval
+newgrouplab <- params$newgrouplab
 libsizef <- params$libsizef
 chrsizef <- params$chrsizef
 outfile <- params$outfile
@@ -152,6 +154,9 @@ seg2$loc.end <- end.pos$End
 seg2 <- seg2[, -c(1,7)]
 segmean.label <- paste0(qry, ":", subj, "_log2fc")
 colnames(seg2) <- c("Chr", "Start", "End", "NumBin", segmean.label)
+
+###
+seg2$Chr <- gsub(paste0(newgrouplab, "[0-9]+$"), "", seg2$Chr)
 
 #######################################
 # grouping segments based segmean

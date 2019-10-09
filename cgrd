@@ -16,6 +16,7 @@ use FindBin;
 # hard setting
 my $version = "0.01";
 my $klen = 31;
+my $newgrouplabtext = "_TMPNEWGROUPLAB";
 
 # default values
 my $knum = 300; # a bin contain 300 uniquely mapped k-mers 
@@ -235,8 +236,12 @@ close LS;
 # read counts
 ##############
 &runreport("Bedtools counting");
-my $bincount_file = $prefix."/".$prefix."_3_bin.counts";
-`bedtools multicov -bams $sbam $qbam -bed $binbed > $bincount_file`;
+my $rawbincount_file = $prefix."/".$prefix."_3a_raw.bin.counts";
+my $bincount_file = $prefix."/".$prefix."_3b_bin.counts";
+`bedtools multicov -bams $sbam $qbam -bed $binbed > $rawbincount_file`;
+
+&runreport("Bin filtering");
+`perl $scriptPath/utils/bingroup.pl --bc $rawbincount_file --loquantile 0.001 --hiquantile 0.999 --min 20 --maxdist 5000 --newgrouplab $newgrouplabtext > $bincount_file`;
 
 ##############
 # chrsize
@@ -247,7 +252,7 @@ my $chrsizef = $prefix."/chrsize.txt";
 ##############
 # cnv and report
 ##############
-
+&runreport("Segmentation with R");
 my $rmd = $scriptPath."\/utils\/rdseg.Rmd";
 my $htmlout = $prefix."_".$qry."_".$subj.".report.html";
 my $outfile  = $prefix."_".$qry."_".$subj."segments.txt";
@@ -265,7 +270,8 @@ print TMPR "    bc=\"$bincount_file\",\n";
 print TMPR "    libsizef=\"$libsizef\",\n";
 print TMPR "    chrsizef=\"$chrsizef\",\n";
 print TMPR "    outfile=\"$outfile\",\n";
-print TMPR "    groupval=\"$groupval\"\),\n";
+print TMPR "    groupval=\"$groupval\",\n";
+print TMPR "    newgrouplab=\"$newgrouplabtext\"\),\n";
 print TMPR "  knit_root_dir=getwd\(\),\n";
 print TMPR "  output_dir=getwd\(\),\n";
 print TMPR "  output_format=\"html_document\",\n";
