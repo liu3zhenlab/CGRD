@@ -12,17 +12,23 @@ use Getopt::Long;
 use File::Temp;
 use FindBin;
 
+# hard-coded vals
 my $version = "0.01";
 my $klen = 31;
+
+# default
+my $knum = 300; # a bin contain 300 uniquely mapped k-mers 
+my $prefix = "gebino"; # default prefix for outputs
+my $threads = 1; # number of threads used for jellyfish, bowtie, and samtools
 
 sub prompt {
 	print <<EOF;
 	Usage: perl gebin [options]
 	[Options]
 	--ref <file>    reference genome FASTA file; required
-	--knum <num>    number of unique k-mers for a bin (300)
-	--prefix <str>  prefix for outputs (gebino)
-	--threads <num> number of threads (1)
+	--knum <num>    number of unique k-mers for a bin ($knum)
+	--prefix <str>  prefix for outputs ($prefix)
+	--threads <num> number of threads ($threads)
 	--version       version
 	--help          help information
 	
@@ -31,10 +37,6 @@ sub prompt {
 EOF
 exit;
 }
-
-my $knum = 300; # a bin contain 300 uniquely mapped k-mers 
-my $prefix = "gebino"; # default prefix for outputs
-my $threads = 1; # number of threads used for jellyfish, bowtie, and samtools
 
 my ($ref, $help);
 
