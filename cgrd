@@ -59,7 +59,6 @@ sub prompt {
 	--maxdistBins <num>  bp distance between neighbor bins after exclusion of unqualified bins ($maxdistBins)
 	--chr2plot <str>     list of chr or contigs to be plotted, separated by space (all)
 	                     e.g., "1 2 3": chromosomes 1, 2, 3 will be plotted
-	--plusbins           add points of bins if specified; off by default
 	--cleanup            clean up intermediate outputs if specified; off by default
 	--version            version
 	--help               help information
@@ -74,7 +73,6 @@ exit;
 
 my ($ref, $subj, $sfq1, $sfq2, $sbam);
 my ($qry, $qfq1, $qfq2, $qbam, $binbed);
-my ($plusbins);
 
 
 #############
@@ -85,7 +83,7 @@ my %opts = ();
                     "sfq1=s", "sfq2=s", "qfq1=s", "qfq2=s",
 					"sbam=s", "qbam=s", "knum=i", "binbed=s",
 					"loquantile=f", "hiquantile=f", "chr2plot=s",
-					"mincountBin=i", "maxdistBins=i", "plusbins",
+					"mincountBin=i", "maxdistBins=i", 
 					"threads=i", "prefix=s", "samfilt=s", "cleanup", "help");
 
 if (exists $opts{version}) { 
@@ -112,7 +110,6 @@ $groupval = &spacesep($groupval);
 $loquantile = $opts{loquantile} if (exists $opts{loquantile});
 $hiquantile = $opts{hiquantile} if (exists $opts{hiquantile});
 $mincountBin = $opts{mincountBin} if (exists $opts{mincountBin});
-$plusbins = $opts{plusbins} if (exists $opts{plusbins});
 $maxdistBins = $opts{maxdistBins} if (exists $opts{maxdistBins});
 $chr2plot = $opts{chr2plot} if (exists $opts{chr2plot});
 $chr2plot = &spacesep($chr2plot);
@@ -310,9 +307,6 @@ my $chrsizef = $prefix."/chrsize.txt";
 #########################
 &runreport("Segmentation with R");
 my $rmd = $scriptPath."\/utils\/rdseg.Rmd";
-if ($plusbins) {
-	$rmd = $scriptPath."\/utils\/rdseg.plus.bins.Rmd";
-}
 my $htmlout = $prefix."_".$qry."_".$subj.".report.html";
 my $outfile  = $prefix."_".$qry."_".$subj.".segments.txt";
 my $tmpRscript = $prefix."/".$prefix."_X_Rmd.render.R";
