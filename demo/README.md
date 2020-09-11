@@ -5,7 +5,7 @@ In this demo, 40 kb *E. coli* sequence was extracted from the Genbank accession 
 
 A 50 kb insertion and a 50 kb deletion were introduced in a qrery genome \(qry\).  
 
-Paired-end reads 2x100 bp were simulated from each genome, produing data:  
+Paired-end reads 2x100 bp were simulated from each genome, producing data:  
 reads from the ref genome: [read1](./reads/ref.1.fastq) and [read2](reffq2=./reads/ref.2.fastq)  
 reads from the qry genome: [read1](qryfq1=./reads/qry.1.fastq) and [read2](qryfq2=./reads/qry.2.fastq)
 
