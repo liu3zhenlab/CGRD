@@ -13,9 +13,9 @@ use File::Temp;
 use FindBin;
 
 # hard setting
-my $version = "0.2";
+my $version = "0.3";
 my $klen = 31;
-my $newgrouplabtext = "_TMPNEWGROUPLAB";
+my $newgrouplabtext = "_TMPNEWGROUP";
 
 # default values
 my $knum = 300; # a bin contain 300 uniquely mapped k-mers 
@@ -56,10 +56,11 @@ sub prompt {
 	--loquantile <float> bins at the percentile from 0-$loquantile will be excluded ($loquantile)
 	--hiquantile <float> bins at the percnetile from $hiquantile-1 will be excluded ($hiquantile)
 	--mincountBin <num>  bins with counts lower than $mincountBin will be excluded ($mincountBin)
-	--maxdistBins <num>  bp distance between neighbor bins after exclusion of disqualified bins ($maxdistBins)
+	--maxdistBins <num>  bp distance between neighbor bins after exclusion of unqualified bins ($maxdistBins)
 	--chr2plot <str>     list of chr or contigs to be plotted, separated by space (all)
 	                     e.g., "1 2 3": chromosomes 1, 2, 3 will be plotted
-	--plusbins           add points of bins if specified
+	--plusbins           add points of bins if specified; off by default
+	--cleanup            clean up intermediate outputs if specified; off by default
 	--version            version
 	--help               help information
 	
@@ -73,7 +74,7 @@ exit;
 
 my ($ref, $subj, $sfq1, $sfq2, $sbam);
 my ($qry, $qfq1, $qfq2, $qbam, $binbed);
-my ($plusbins, $help);
+my ($plusbins);
 
 
 #############
@@ -85,7 +86,7 @@ my %opts = ();
 					"sbam=s", "qbam=s", "knum=i", "binbed=s",
 					"loquantile=f", "hiquantile=f", "chr2plot=s",
 					"mincountBin=i", "maxdistBins=i", "plusbins",
-					"threads=i", "prefix=s", "samfilt=s", "help");
+					"threads=i", "prefix=s", "samfilt=s", "cleanup", "help");
 
 if (exists $opts{version}) { 
 	print "$0 $version\n";
@@ -159,7 +160,7 @@ my $runlog = $prefix.".run.log";
 open(LOG, ">$runlog") || die;
 
 ##############
-# 1. bin
+# step 1. bin
 ##############
 if (!defined $binbed) {
 # fas2kmer
@@ -183,9 +184,9 @@ if (!defined $binbed) {
 	print LOG "  $binbed\n";
 }
 
-##############
-# reads to bam 
-##############
+######################
+# step 2. reads to bam 
+######################
 # library size: uniquely mapped reads
 my $libsizef = $prefix."/libsize.txt";
 if (-f $libsizef) {
@@ -209,11 +210,28 @@ my $subj_aln=$prefix."/".$prefix."_2a_".$subj;
 my $subj_libsize;
 if (!defined $sbam) {
 	&runreport("subj alignment");
+	
+	# if input reads are gzipped:
+	if ($sfq1 =~ /gz$/) {
+		my $sfq1_tmp = $prefix."/sfq1.fq";
+		`gunzip -c $sfq1 > $sfq1_tmp`; # unzip
+		$sfq1 = $sfq1_tmp;
+	}
+	
+	if ($sfq2 =~ /gz$/) {
+		my $sfq2_tmp = $prefix."/sfq2.fq";
+		`gunzip -c $sfq2 > $sfq2_tmp`; # unzip
+		$sfq2 = $sfq2_tmp;
+	}
+	
+	# alignment and parsing:
 	`bwa mem -t $threads -T 40 -S $bwa_dbidx/ref $sfq1 $sfq2 1> $subj_aln 2>>$runlog`;
 	`perl $scriptPath/utils/samparser.pl -i $subj_aln --libsize $subj_aln.libsize $samfilt 1>$subj_aln.filt 2>>$runlog`;
 	&samfilt2bam($subj_aln); # filter and convert aln to BAM
+	
 	# cleanup
 	`rm $subj_aln; rm $subj_aln.filt`;
+	`rm $sfq1; rm $sfq2`;
 
 	$sbam = $subj_aln.".bam"; # subj BAM
 
@@ -233,12 +251,28 @@ my $qry_aln=$prefix."/".$prefix."_2b_".$qry;
 my $qry_libsize;
 if (!defined $qbam) {
 	&runreport("query alignment");
+	
+	# if input reads are gzipped:
+	if ($qfq1 =~ /gz$/) {
+		my $qfq1_tmp = $prefix."/qfq1.fq";
+		`gunzip -c $qfq1 > $qfq1_tmp`; # unzip
+		$qfq1 = $qfq1_tmp;
+	}
+	
+	if ($qfq2 =~ /gz$/) {
+		my $qfq2_tmp = $prefix."/qfq2.fq";
+		`gunzip -c $qfq2 > $qfq2_tmp`; # unzip
+		$qfq2 = $qfq2_tmp;
+	}
+	
+	# alignment and parsing
 	`bwa mem -t $threads -T 40 -S $bwa_dbidx/ref $qfq1 $qfq2 1>$qry_aln 2>>$runlog`;
 	`perl $scriptPath/utils/samparser.pl -i $qry_aln --libsize $qry_aln.libsize $samfilt 1>$qry_aln.filt 2>>$runlog`;
 	&samfilt2bam($qry_aln); # filter and convert aln to BAM	
 	# cleanup
 	`rm $qry_aln; rm $qry_aln.filt`;
-	
+	`rm $qfq1; rm $qfq2`;
+
 	$qbam = $qry_aln.".bam"; # qry BAM
 	
 	# output library size:
@@ -254,9 +288,9 @@ chomp($qry_libsize);
 print LS "$qry\t$qry_libsize\n";
 close LS;
 
-##############
-# read counts
-##############
+#####################
+# step 3: read counts
+#####################
 &runreport("Bedtools counting");
 my $rawbincount_file = $prefix."/".$prefix."_3a_raw.bin.counts";
 my $bincount_file = $prefix."/".$prefix."_3b_bin.counts";
@@ -265,22 +299,22 @@ my $bincount_file = $prefix."/".$prefix."_3b_bin.counts";
 &runreport("Bin filtering");
 `perl $scriptPath/utils/bingroup.pl --bc $rawbincount_file --loquantile $loquantile --hiquantile $hiquantile --min $mincountBin --maxdist $maxdistBins --newgrouplab $newgrouplabtext 1>$bincount_file 2>>$runlog`;
 
-##############
-# chrsize
-##############
+#################
+# step 4: chrsize
+#################
 my $chrsizef = $prefix."/chrsize.txt";
 `perl $scriptPath/utils/fastaSize.pl $ref 1>$chrsizef 2>>$runlog`;
 
-##############
-# cnv and report
-##############
+#########################
+# step 5: cnv and report
+#########################
 &runreport("Segmentation with R");
 my $rmd = $scriptPath."\/utils\/rdseg.Rmd";
 if ($plusbins) {
 	$rmd = $scriptPath."\/utils\/rdseg.plus.bins.Rmd";
 }
 my $htmlout = $prefix."_".$qry."_".$subj.".report.html";
-my $outfile  = $prefix."_".$qry."_".$subj."segments.txt";
+my $outfile  = $prefix."_".$qry."_".$subj.".segments.txt";
 my $tmpRscript = $prefix."/".$prefix."_X_Rmd.render.R";
 open(TMPR, ">$tmpRscript") || die;
 print TMPR "library\(rmarkdown\)\n";
@@ -307,6 +341,18 @@ close TMPR;
 # render R
 
 `Rscript $tmpRscript 1>>$runlog 2>>$runlog`;
+
+###############################################
+# cleanup if specified
+###############################################
+if ($opts{cleanup}) {
+	&runreport("cleanup");
+	`rm -rf $prefix`;
+	my $html_dir = $prefix."_".$qry."_".$subj.".report_files";
+	if (-d $html_dir) {
+		`rm -rf $html_dir`;
+	}
+}
 
 close LOG;
 

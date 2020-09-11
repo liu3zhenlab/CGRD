@@ -30,8 +30,8 @@ cgrd --ref $ref \
 Here are three major output files: 
 
 1. [cgrdo_qry_ref.report.html](cgrdo_qry_ref.report.html): summary of CGRD output  
-2. [cgrdo_qry_refsegments.txt](cgrdo_qry_refsegments.txt): a flat text file to show comparison result  
-3. [qry_refcgrd.pdf](qry_refcgrd.pdf): visualization plot as the following figure
+2. [cgrdo_qry_ref.segments.txt](cgrdo_qry_ref.segments.txt): a flat text file to show comparison result  
+3. [qry_ref.cgrd.pdf](qry_ref.cgrd.pdf): visualization plot as the following figure
 
-<img src="qry_refcgrd.png" alt="Figure 1. CGRD on the ref" width="450"/>
+<img src="qry_ref.cgrd.png" alt="Figure 1. CGRD on the ref" width="450"/>
 
