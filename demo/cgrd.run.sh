@@ -2,7 +2,7 @@
 
 ref=../genome/ref.fasta
 reffq1=../reads/ref.1.fastq
-reffq2=../reads/ref.q.fastq
+reffq2=../reads/ref.2.fastq
 qryfq1=../reads/qry.1.fastq
 qryfq2=../reads/qry.2.fastq
 
