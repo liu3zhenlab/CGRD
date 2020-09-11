@@ -1,0 +1,405 @@
+---
+title: "Segmentation of bin read counts"
+date: "`r format(Sys.time(), '%d %B %Y')`"
+params:
+  subj: null
+  qry: null
+  bc: null
+  libsizef: null
+  chrsizef: null
+  groupval: null
+  chr2plot: null
+  newgrouplab: null
+  outfile: null
+  version: null
+output:
+  html_document: default
+---
+
+```{r parameters, echo = FALSE}
+subj <- params$subj
+qry <- params$qry
+bc <- params$bc
+groupval <- params$groupval
+chr2plot <- params$chr2plot
+newgrouplab <- params$newgrouplab
+libsizef <- params$libsizef
+chrsizef <- params$chrsizef
+outfile <- params$outfile
+version <- params$version
+
+library("knitr")
+```
+
+#### Rationale
+CGRD (`r version`) (github.com/liu3zhenlab/CGRD) was dedicated to find copy number variation (CNV) through comparing depths of sequencing reads from two genotypes (`r subj` and `r qry`). Briefly, first, a reference genome is scanned to identify non-repetitive sequence bins (windows). Reads are aligned to the reference genome and read counts are determined for each bin. The log2 of the ratio of normalized read counts (or read depths) of `r qry` to `r subj` per bin is calculated, referred to as the log ratio or **logRD**. LogRD values were then used for the segmentation that combines continuous bins with similar logRD values. The mean logRD value per segment is the indication for CNV between `r subj` and `r qry` of the segment. For a segment, the logRD is close to zero if the sequences of `r subj` and `r qry` are identical and no CNVs. The sufficient derivation of the mean of logRD from zero is likely due to CNV.  
+
+```{r, echo = FALSE, result="hide", comment=""}
+library("DNAcopy")
+
+xunit <- 1000000 # bp
+groupval <- strsplit(groupval, " +")[[1]]
+groupval <- as.numeric(groupval)
+
+chr2plot <- strsplit(chr2plot, " +")[[1]]
+
+sysinfo <- sessionInfo()$R.version
+```
+
+#### Running environment
+R version: `r sysinfo$version.string`
+Platform and OS system: `r sysinfo$platform` and `r sysinfo$system`
+
+
+
+```{r modules, echo = FALSE }
+################
+# draw axis line
+################
+plotaxis <- function(x, y, at.ticks=NULL, ticklen=NULL, tick.labs=NULL,
+                     at.sub=NULL, sublen=NULL, labeltext) {
+  lines(x, y, xpd = 1, col = "gray50")
+  # ticks and subticks
+  if (!is.null(at.ticks)) {
+    if (is.null(tick.labs)) {
+      tick.labs <- at.ticks
+    }
+    for (i in 1:length(at.ticks)) {  # ticks
+      lines(c(x[1]-ticklen, x[1]), rep(at.ticks[i], 2), xpd = 1, col = "gray30")
+      text(x=x[1]-ticklen, y=at.ticks[i], labels=tick.labs[i], xpd = 1, pos = 2, cex=0.9)
+    }
+  }
+  text(x[1]-8*ticklen, mean(range(at.ticks)) + 2, labels=labeltext, xpd=1, pos=2)
+  # sub ticks
+  if (!is.null(at.sub)) {
+    for (i in 1:length(at.sub)) {
+      lines(x=c(x[1], x[1]-sublen), y=rep(at.sub[i], 2), col = "gray30")
+    }
+  }
+}
+
+
+################
+# draw lines
+################
+linedraw <- function(d, xunit = 1, yadjust, color = "grey60", lend.val = 1, lwd.val = 2, line.ext = 0) {
+# function to draw segment lines
+  xvals <- d[1:2] / xunit
+  xvals[1] <- xvals[1] - line.ext
+  xvals[2] <- xvals[2] + line.ext
+  yvals <- rep(d[3], 2) + yadjust
+  lines(xvals, yvals, lwd = lwd.val, lend = lend.val, col = color)
+}
+```
+
+#### LogRDs of bins
+
+```{r, echo=FALSE, fig.align='center', fig.cap="Fig 1. histogram of log ratios", fig.height=4, fig.width= 8, result="hide"}
+#######################################
+# step1: loading data
+#######################################
+bincount <- read.delim(bc, header = F)
+colnames(bincount) <- c("Chr", "Start", "End", "Order", subj, qry)
+bincount$Bin <- paste0(bincount$Chr, "_", bincount$Start, "-", bincount$End)
+bincount$Pos <- round((bincount$Start + bincount$End) / 2, 0)
+
+### chr/ctg sizes:
+chrsize <- read.delim(chrsizef, header = F)
+colnames(chrsize) <- c("Chr", "Len")
+
+### libsize
+libsize <- read.delim(libsizef)
+subj.libsize <- libsize[libsize$sample == subj, "reads"]
+qry.libsize <- libsize[libsize$sample == qry, "reads"]
+
+#######################################
+# step2: bincount data qrycountloration
+#######################################
+bincount$log2fc <- log2((bincount[, qry] + 1) / (bincount[, subj] + 1) / qry.libsize * subj.libsize)
+
+### histogram
+xlabel <- paste0("Log2(", qry, ":", subj, ")")
+hist(bincount$log2fc, nclass = 500, xlab = xlabel,
+     ylab = "Number of Bins", main = paste0(qry, " vs. ", subj))
+abline(v=0, col = "red")
+```
+
+
+#### Segmentation summary
+```{r, echo = FALSE, result="hide", message=F, warning=F, comment="", error=F}
+#######################################
+# step2b: segmentation
+#######################################
+log2fc <- bincount[,c("Chr", "Pos", "log2fc")]
+
+# segmentation:
+cna <-CNA(log2fc$log2fc, log2fc$Chr, log2fc$Pos, data.type ="logratio", sampleid="qrycount")
+
+cna.smooth <- smooth.CNA(cna, smooth.region = 10, outlier.SD.scale=4,
+                         smooth.SD.scale = 2, trim = 0.01)
+
+# core step for the segmentation:
+cna.seg <- segment(cna.smooth, alpha=0.005, nperm=10000, p.method="perm",
+                   eta=0.005, min.width=3, undo.splits = "sdundo", undo.SD=3, verbose=0)
+
+# output:
+seg <- cna.seg$output
+rm(log2fc) # cleanup to save mem
+
+#######################################
+# step3: adjust coordinates
+#######################################
+### refine the segment starting and ending positions:
+seg2 <- seg
+seg$Order <- 1:nrow(seg)
+start.pos <- merge(seg[, c("chrom", "loc.start", "Order")],
+                   bincount[, c("Chr", "Start", "Pos")],
+                   by.x = c("chrom", "loc.start"), by.y = c("Chr", "Pos"))
+start.pos <- start.pos[order(start.pos$Order), ]
+
+seg2$loc.start <- start.pos$Start
+end.pos <- merge(seg[, c("chrom", "loc.end", "Order")], 
+                 bincount[, c("Chr", "End", "Pos")],
+                 by.x = c("chrom", "loc.end"), by.y = c("Chr", "Pos"))
+end.pos <- end.pos[order(end.pos$Order), ]
+seg2$loc.end <- end.pos$End
+seg2 <- seg2[, -c(1,7)]
+segmean.label <- paste0(qry, ":", subj, "_log2fc")
+colnames(seg2) <- c("Chr", "Start", "End", "NumBin", segmean.label)
+
+### remove group labels:
+seg2$Chr <- gsub(paste0(newgrouplab, "[0-9]+$"), "", seg2$Chr)
+bincount$Chr <- gsub(paste0(newgrouplab, "[0-9]+$"), "", bincount$Chr)
+
+#######################################
+# grouping segments based segmean
+#######################################
+ungrouplabel <- "ungrouped"
+eqlabel <- paste0(qry, "=", subj)
+uplabel <- paste0(qry, ">", subj)
+dnlabel <- paste0(qry, "<", subj)
+
+seg2$Group <- ungrouplabel
+eq.group <- (seg2[, segmean.label] >= groupval[2] & seg2[, segmean.label] <= groupval[3])
+seg2[eq.group, "Group"] <- eqlabel # eq
+up.group <- (seg2[, segmean.label] >= groupval[4])
+seg2[up.group, "Group"] <- uplabel # up
+dn.group <- (seg2[, segmean.label] <= groupval[1])
+seg2[dn.group, "Group"] <- dnlabel # dn
+
+#######################################
+# output:
+#######################################
+write.table(seg2, file=outfile, row.names=F, col.names=F, quote=F, sep="\t")
+```
+
+```{r, echo=F, result="hide", message=F, warning=F, error=F}
+#seg2 <- read.delim(outfile, header=F, stringsAsFactors=F)
+#print(head(seg2))
+#seg2$Len <- as.numeric(as.character(seg2[,3])) - as.numeric(as.character(seg[,2])) + 1
+seg2$Len <- seg2[,3] - seg2[,2] + 1 
+lensum <- tapply(seg2$Len, seg2[,6], sum)
+numSeg <- table(seg2[, 6])
+groups <- names(numSeg)
+segstat <- data.frame(Group=groups, Num_segments=numSeg, Len_segments=lensum[groups])
+kable(segstat, caption="Table 1. Statistics of segmentation output", row.names=F)
+```
+
+#### Segmentation plotting
+
+```{r, echo=FALSE, result="hide", message=F, warning=F, include=F}
+#######################################
+### output image:
+#######################################
+plot.file <- paste0(qry, "_", subj, ".cgrd.pdf")
+par(mfrow=c(1,1))
+offset <- 14
+
+chrs <- as.character(unique(seg2$Chr))
+num.chrs <- length(chrs)
+if (chr2plot != "all") {
+  stopifnot(sum(! chr2plot %in% chrs) == 0)  ### if chr2plot has chr that is not in the chr list
+  chrs <- chr2plot
+  num.chrs <- length(chr2plot)
+  chrsize <- chrsize[chrsize$Chr %in% chr2plot, ]
+}
+
+xmax <- max(chrsize$Len)/xunit
+
+##################
+### save to PDF file
+##################
+pdf(plot.file, width = 7.5, height = 8.5)
+
+##################
+# plot
+##################
+par(mar = c(4.5, 5, 3.5, 1))
+xleft <- -0.02 * xmax
+ybottom <- -6.5 - num.chrs
+ytop <- num.chrs * offset - offset + 3
+plot(NULL,NULL,
+     xlim=c(xleft, xmax),
+     ylim=c(ybottom, ytop),
+     main=paste(qry, "vs", subj), cex.main=1.2,
+     bty="n", type="n", yaxt="n",
+     xlab="Physical coordinate (Mb)", ylab="",
+     cex.axis = 1.2, cex.lab = 1.2)
+
+mtext(text = paste0("log2(", qry, ":", subj, ")"), side = 2, line = 3.5, cex = 1.2,
+      at = mean(c(0, num.chrs * offset - offset + 1)))
+
+##################
+### plot all chrs and ctgs:
+##################
+for (j in 1:num.chrs) { # all chrs / contigs
+  dp <- seg2[seg2$Chr == chrs[j], ] # plot set
+  
+  shift <- offset * (num.chrs - j)
+  # plot each bins:
+  for (i in c(-6:3)) {
+    lines(c(0, xmax), y = rep(shift + i, 2), col = "grey85", xpd = 1)
+  }
+  
+  ##################
+  # draw lines of all segments
+  ##################
+  line.lwd = 2
+  apply(dp[, c("Start", "End", segmean.label)], 1, linedraw, xunit = xunit,
+        yadjust = shift, lwd.val = line.lwd, color = "grey60", line.ext = 0)
+  
+  ##################
+  # groups to highlight
+  ##################
+  eq.group <- (dp$Group == eqlabel)
+  up.group <- (dp$Group == uplabel)
+  dn.group <- (dp$Group == dnlabel)
+  
+  if (sum(eq.group) > 0) {
+    apply(dp[eq.group, c("Start", "End", segmean.label)], 1, linedraw, xunit = xunit,
+          yadjust = shift, lwd.val = line.lwd, color = "dark green", line.ext = xmax / 10000)
+  }
+  
+  if (sum(up.group) > 0) {
+    apply(dp[up.group, c("Start", "End", segmean.label)], 1, linedraw, xunit = xunit,
+          yadjust = shift, lend.val = 1, lwd.val = line.lwd, color = "red", line.ext = xmax / 500)
+  }
+  
+  if (sum(dn.group) > 0) { 
+    apply(dp[dn.group, c("Start", "End", segmean.label)], 1, linedraw, xunit = xunit,
+          yadjust = shift, lend.val = 1, lwd.val = line.lwd, color = "blue", line.ext = xmax / 10000)
+  }
+  
+  ##################
+  # plot yaxis
+  ##################
+   yaxis.pos <- c(-6, -3, 0, 3)
+    label.pos <- c(-6, -3, 0, 3)
+    plotaxis(x=rep(xleft, length(yaxis.pos)), y= yaxis.pos+shift,
+           at.ticks=yaxis.pos+shift, ticklen=xmax/200, tick.labs=label.pos,
+           labeltext=chrs[j])
+  
+}
+
+##################
+# legends:
+##################
+text.interval <-  (xmax - xleft)/4
+text(xleft + (0:3)*text.interval, y=rep(ybottom, 4),
+     labels = c(paste0(qry, c(">", "=", "<"), subj), "ungrouped"),
+     col = c("red", "dark green", "blue", "grey50"), pos = 4, xpd = 1)
+
+dev.off()
+```
+
+
+```{r, echo=FALSE, result="hide", fig.align='center', fig.cap="Fig 2. CGRD logRD plot", fig.height=4, fig.width=8, message=F, warning=F}
+##################
+# plot
+##################
+offset <- 14
+chrs <- as.character(unique(seg2$Chr))
+num.chrs <- length(chrs)
+if (chr2plot != "all") {
+  stopifnot(sum(! chr2plot %in% chrs) == 0)  ### if chr2plot has chr that is not in the chr list
+  chrs <- chr2plot
+  num.chrs <- length(chr2plot)
+  chrsize <- chrsize[chrsize$Chr %in% chr2plot, ]
+}
+xmax <- max(chrsize$Len)/xunit
+
+par(mar = c(4.5, 5, 3.5, 1))
+xleft <- -0.02 * xmax
+ybottom <- -6.5 - num.chrs
+ytop <- num.chrs * offset - offset + 3
+plot(NULL,NULL,
+     xlim=c(xleft, xmax),
+     ylim=c(ybottom, ytop),
+     main=paste(qry, "vs", subj), cex.main=1.2,
+     bty="n", type="n", yaxt="n",
+     xlab="Physical coordinate (Mb)", ylab="",
+     cex.axis = 1.2, cex.lab = 1.2)
+
+mtext(text = paste0("log2(", qry, ":", subj, ")"), side = 2, line = 3.5, cex = 1.2,
+      at = mean(c(0, num.chrs * offset - offset + 1)))
+
+##################
+### plot all chrs and ctgs:
+##################
+for (j in 1:num.chrs) { # all chrs / contigs
+  dp <- seg2[seg2$Chr == chrs[j], ] # plot set
+  
+  shift <- offset * (num.chrs - j)
+  # plot each bins:
+  for (i in c(-6:3)) {
+    lines(c(0, xmax), y = rep(shift + i, 2), col = "grey85", xpd = 1)
+  }
+  
+  ##################
+  # draw lines of all segments
+  ##################
+  line.lwd = 2
+  apply(dp[, c("Start", "End", segmean.label)], 1, linedraw, xunit = xunit,
+        yadjust = shift, lwd.val = line.lwd, color = "grey60", line.ext = 0)
+  
+  ##################
+  # groups to highlight
+  ##################
+  eq.group <- (dp$Group == eqlabel)
+  up.group <- (dp$Group == uplabel)
+  dn.group <- (dp$Group == dnlabel)
+  
+  if (sum(eq.group) > 0) {
+    apply(dp[eq.group, c("Start", "End", segmean.label)], 1, linedraw, xunit = xunit,
+          yadjust = shift, lwd.val = line.lwd, color = "dark green", line.ext = xmax / 10000)
+  }
+  
+  if (sum(up.group) > 0) {
+    apply(dp[up.group, c("Start", "End", segmean.label)], 1, linedraw, xunit = xunit,
+          yadjust = shift, lend.val = 1, lwd.val = line.lwd, color = "red", line.ext = xmax / 500)
+  }
+  
+  if (sum(dn.group) > 0) { 
+    apply(dp[dn.group, c("Start", "End", segmean.label)], 1, linedraw, xunit = xunit,
+          yadjust = shift, lend.val = 1, lwd.val = line.lwd, color = "blue", line.ext = xmax / 10000)
+  }
+  
+  ##################
+  # plot yaxis
+  ##################
+   yaxis.pos <- c(-6, -3, 0, 3)
+    label.pos <- c(-6, -3, 0, 3)
+    plotaxis(x=rep(xleft, length(yaxis.pos)), y= yaxis.pos+shift,
+           at.ticks=yaxis.pos+shift, ticklen=xmax/200, tick.labs=label.pos,
+           labeltext=chrs[j])
+  
+}
+
+##################
+# legends:
+##################
+text.interval <-  (xmax - xleft)/4
+text(xleft + (0:3)*text.interval, y=rep(ybottom, 4),
+     labels = c(paste0(qry, c(">", "=", "<"), subj), "ungrouped"),
+     col = c("red", "dark green", "blue", "grey50"), pos = 4, xpd = 1)
+```
