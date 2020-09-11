@@ -1,2 +1,0 @@
-oldcontig	start	end	strand	newcontig	order
-NC_000913.3	1	40000	plus	ref	1

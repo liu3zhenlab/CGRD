@@ -1,5 +1,0 @@
-oldcontig	start	end	strand	newcontig	order
-NC_000913.3	1	10000	plus	qry	1
-NC_000913.3	5001	10000	plus	qry	2
-NC_000913.3	10001	20000	plus	qry	3
-NC_000913.3	25001	40000	plus	qry	4

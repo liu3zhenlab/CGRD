@@ -1,0 +1,145 @@
+o 2020-09-11 00:21:51
+    generating k-mers from reference.
+    ../data/simulated/genome/ref.fasta
+o 2020-09-11 00:22:04
+    mapping k-mers to reference.
+o 2020-09-11 00:22:14
+    generaring bin BED file.
+o 2020-09-11 00:22:14
+    bwa indexing.
+o 2020-09-11 00:22:15
+    subj alignment.
+o 2020-09-11 00:22:19
+    query alignment.
+o 2020-09-11 00:22:21
+    Bedtools counting.
+o 2020-09-11 00:22:22
+    Bin filtering.
+o 2020-09-11 00:22:24
+    Segmentation with R.
+ain] Version: 0.7.17-r1188
+[main] CMD: bwa mem -t 1 -T 40 -S cgrdo/bwa/ref ../data/simulated/reads/ref.1.fastq
+[main] Real time: 0.515 sec; CPU: 0.388 sec
+#9/11/2020 0:22:17 Fri
+#---- Parse criteria -----
+#minimum number of identical bases	60
+#mismatched value (include INDEL penalty) out of matched bases	5 100
+#INDEL penalty used to calculate mismatched value	2
+#maximum length of tail allowed at each side out of matched bases	5 100
+#maximum length of the gap allowed	10000
+#minimum mapping score of each read	40
+[M::bwa_idx_load_from_disk] read 0 ALT contigs
+[M::process] read 12000 sequences (1200000 bp)...
+[M::mem_process_seqs] Processed 12000 reads in 0.369 CPU sec, 0.369 real sec
+[main] Version: 0.7.17-r1188
+[main] CMD: bwa mem -t 1 -T 40 -S cgrdo/bwa/ref ../data/simulated/reads/qry.1.fastq
+[main] Real time: 0.557 sec; CPU: 0.387 sec
+#9/11/2020 0:22:20 Fri
+#---- Parse criteria -----
+#minimum number of identical bases	60
+#mismatched value (include INDEL penalty) out of matched bases	5 100
+#INDEL penalty used to calculate mismatched value	2
+#maximum length of tail allowed at each side out of matched bases	5 100
+#maximum length of the gap allowed	10000
+#minimum mapping score of each read	40
+Unknown option: newgrouplab
+
+
+processing file: rdseg.Rmd
+  |                                                                         |                                                                 |   0%  |                                                                         |....                                                             |   6%
+   inline R code fragments
+
+  |                                                                         |........                                                         |  12%
+label: parameters (with options) 
+List of 1
+ $ echo: logi FALSE
+
+  |                                                                         |............                                                     |  19%
+   inline R code fragments
+
+  |                                                                         |................                                                 |  25%
+label: unnamed-chunk-1 (with options) 
+List of 3
+ $ echo   : logi FALSE
+ $ result : chr "hide"
+ $ comment: chr ""
+
+  |                                                                         |....................                                             |  31%
+   inline R code fragments
+
+  |                                                                         |........................                                         |  38%
+label: modules (with options) 
+List of 1
+ $ echo: logi FALSE
+
+  |                                                                         |............................                                     |  44%
+  ordinary text without R code
+
+  |                                                                         |................................                                 |  50%
+label: unnamed-chunk-2 (with options) 
+List of 6
+ $ echo      : logi FALSE
+ $ fig.align : chr "center"
+ $ fig.cap   : chr "Fig 1. histogram of log ratios"
+ $ fig.height: num 4
+ $ fig.width : num 8
+ $ result    : chr "hide"
+
+  |                                                                         |.....................................                            |  56%
+  ordinary text without R code
+
+  |                                                                         |.........................................                        |  62%
+label: unnamed-chunk-3 (with options) 
+List of 6
+ $ echo   : logi FALSE
+ $ result : chr "hide"
+ $ message: symbol F
+ $ warning: symbol F
+ $ comment: chr ""
+ $ error  : symbol F
+
+  |                                                                         |.............................................                    |  69%
+  ordinary text without R code
+
+  |                                                                         |.................................................                |  75%
+label: unnamed-chunk-4 (with options) 
+List of 5
+ $ echo   : symbol F
+ $ result : chr "hide"
+ $ message: symbol F
+ $ warning: symbol F
+ $ error  : symbol F
+
+  |                                                                         |.....................................................            |  81%
+  ordinary text without R code
+
+  |                                                                         |.........................................................        |  88%
+label: unnamed-chunk-5 (with options) 
+List of 5
+ $ echo   : logi FALSE
+ $ result : chr "hide"
+ $ message: symbol F
+ $ warning: symbol F
+ $ include: symbol F
+
+  |                                                                         |.............................................................    |  94%
+  ordinary text without R code
+
+  |                                                                         |.................................................................| 100%
+label: unnamed-chunk-6 (with options) 
+List of 8
+ $ echo      : logi FALSE
+ $ result    : chr "hide"
+ $ fig.align : chr "center"
+ $ fig.cap   : chr "Fig 2. CGRD logRD plot"
+ $ fig.height: num 4
+ $ fig.width : num 8
+ $ message   : symbol F
+ $ warning   : symbol F
+
+
+output file: rdseg.knit.md
+
+/homes/liu3zhen/.conda/envs/cgrd/bin/pandoc +RTS -K512m -RTS rdseg.utf8.md --to html4 --from markdown+autolink_bare_uris+ascii_identifiers+tex_math_single_backslash+smart --output /homes/liu3zhen/scripts2/CGRDdev/testSimu/cgrdo_qry_ref.report.html --email-obfuscation none --self-contained --standalone --section-divs --template /homes/liu3zhen/.conda/envs/cgrd/lib/R/library/rmarkdown/rmd/h/default.html --no-highlight --variable highlightjs=1 --variable 'theme:bootstrap' --include-in-header /tmp/RtmpFhp5jI/rmarkdown-str12523485ae5f6.html --mathjax --variable 'mathjax-url:https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML' 
+
+Output created: cgrdo_qry_ref.report.html
