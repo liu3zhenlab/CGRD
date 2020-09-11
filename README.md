@@ -76,3 +76,5 @@ perl cgrd
 8. r-rmarkdown-1.12
 9. r-knitr-1.22
 10. dnacopy-1.58.0
+
+Note: the installation might take a few hours.
