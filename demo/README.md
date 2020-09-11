@@ -33,5 +33,5 @@ Here are three major output files:
 2. [cgrdo_qry_refsegments.txt](cgrdo_qry_refsegments.txt): a flat text file to show comparison result  
 3. [qry_refcgrd.pdf](qry_refcgrd.pdf): visualization plot as figure 1
 
-![Figure 1. CGRD comparison](qry_refcgrd.png)
+![Figure 1. CGRD comparison](qry_refcgrd.png&s=200)
 
