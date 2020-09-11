@@ -65,7 +65,7 @@ cd CGRD
 perl cgrd
 ```
 
-#### tested package versions:
+#### tested package versions
 1. jellyfish-2.2.10
 2. bowtie-1.2.3
 3. bwa-0.7.17
@@ -78,3 +78,9 @@ perl cgrd
 10. dnacopy-1.58.0
 
 Note: the installation might take a few hours.
+
+### BUG REPORT
+Please report any bugs or suggestion on github or by email to Sanzhen Liu (liu3zhen@ksu.edu).
+
+### LICENSE
+CGRD is distributed under MIT licence.
