@@ -77,7 +77,7 @@ perl cgrd
 9. r-knitr-1.22
 10. dnacopy-1.58.0
 
-Note: the installation might take a few hours.
+**Note**: the installation may take 1-2 hours.
 
 ### BUG REPORT
 Please report any bugs or suggestion on github or by email to Sanzhen Liu (liu3zhen@ksu.edu).
