@@ -35,15 +35,15 @@ sub prompt {
 	[Options]
 	--ref <file>         reference genome FASTA file; required
 	--subj <str>         name of subject sample; required
-	--sfq1 <file>        1st PE FASTQ file of subject sample;
+	--sfq1 <file>        1st PE FASTQ file of subject sample; gzip file is accepted;
 	                     required if --sbam is not provided.
-	--sfq2 <file>        2nd PE FASTQ file of subject sample;
+	--sfq2 <file>        2nd PE FASTQ file of subject sample; gzip file is accepted;
 	                     --sfq1 will be treated as SE if --sfq2 is not provided.
 	--sbam <file>        BAM alignment file; if provided, --sfq1 and --sfq2 will be ignored.
 	--qry <str>          name of query sample; required
-	--qfq1 <file>        1st PE FASTQ file of query sample;
+	--qfq1 <file>        1st PE FASTQ file of query sample; gzip file is accepted;
 	                     required if qbam is not provided
-	--qfq2 <file>        2nd PE FASTQ file of query sample;
+	--qfq2 <file>        2nd PE FASTQ file of query sample; gzip file is accepted;
 	                     --qfq1 will be treated as SE if --qfq2 is not provided.
 	--qbam <file>        BAM alignment file; if provided, --qfq1 and --qfq2 will be ignaored.
 	--binbed <file>      user specified BED file of bins for read count;
@@ -56,7 +56,8 @@ sub prompt {
 	--loquantile <float> bins at the percentile from 0-$loquantile will be excluded ($loquantile)
 	--hiquantile <float> bins at the percnetile from $hiquantile-1 will be excluded ($hiquantile)
 	--mincountBin <num>  bins with counts lower than $mincountBin will be excluded ($mincountBin)
-	--maxdistBins <num>  bp distance between neighbor bins after exclusion of unqualified bins ($maxdistBins)
+	--maxdistBins <num>  maximum bp distance between neighbor bins after exclusion of unqualified bins ($maxdistBins)
+	                     if the distance is larger than $maxdistBins, two neighbor bins are separated into different groups for segmentation
 	--chr2plot <str>     list of chr or contigs to be plotted, separated by space (all)
 	                     e.g., "1 2 3": chromosomes 1, 2, 3 will be plotted
 	--cleanup            clean up intermediate outputs if specified; off by default
