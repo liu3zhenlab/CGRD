@@ -35,4 +35,6 @@ Here are three major output files:
 
 <img src="qry_ref.cgrd.png" alt="Figure 1. CGRD on the ref" width="450"/>
 
-In the figure, we can see two expected copy number variation segments: 1. qry>ref (i.e., higher copy in qry) and 2. qry<ref (i.e., absence in qry).
+In the figure, we can see two expected copy number variation segments:  
+1. qry>ref (i.e., higher copy in qry)  
+2. qry<ref (i.e., absence in qry).
