@@ -22,14 +22,15 @@ Running is easy but might takes days if the genome is large and high-depth seque
 If no BAM alignments are ready, run:
 ```
 perl <path-to-cgrd>/cgrd --ref <fas> \
-  --sfq1 <subject fq1> --sfq2 <subject fq2> \
-  --qfq1 <query fq1> --qfq2 <query fq2>
+  --subj ref --sfq1 <subject fq1> --sfq2 <subject fq2> \
+  --qry qry --qfq1 <query fq1> --qfq2 <query fq2>
 ```
 
 If BAM alignments are ready, run:
 ```
 perl <path-to-cgrd>/cgrd --ref <fas> \
-  --sbam <subject bam> --qbam <query bam>
+  --subj ref --sbam <subject bam> \
+  --qry qry --qbam <query bam>
 ```
 
 ### INSTALLATION
