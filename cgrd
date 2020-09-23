@@ -53,9 +53,9 @@ sub prompt {
 	--prefix <str>       prefix for outputs ($prefix)
 	--threads <num>      number of threads ($threads)
 	--samfilt <str>      parameters of SAM filter ($samfilt)
-	--loquantile <float> bins at the percentile from 0-$loquantile will be excluded ($loquantile)
-	--hiquantile <float> bins at the percnetile from $hiquantile-1 will be excluded ($hiquantile)
-	--mincountBin <num>  bins with counts lower than $mincountBin will be excluded ($mincountBin)
+	--loquantile <float> bins with counts from "subj" at the percentile from 0-$loquantile will be excluded ($loquantile)
+	--hiquantile <float> bins with counts from "subj" at the percnetile from $hiquantile-1 will be excluded ($hiquantile)
+	--mincountBin <num>  bins with counts from "subj" lower than $mincountBin will be excluded ($mincountBin)
 	--maxdistBins <num>  maximum bp distance between neighbor bins after exclusion of unqualified bins ($maxdistBins)
 	                     if the distance is larger than $maxdistBins, two neighbor bins are separated into different groups for segmentation
 	--chr2plot <str>     list of chr or contigs to be plotted, separated by space (all)
@@ -340,7 +340,7 @@ close TMPR;
 ###############################################
 # cleanup if specified
 ###############################################
-if ($opts{cleanup}) {
+if (exists $opts{cleanup}) {
 	&runreport("cleanup");
 	`rm -rf $prefix`;
 	my $html_dir = $prefix."_".$qry."_".$subj.".report_files";
@@ -420,7 +420,7 @@ sub map2ref {
 	`bowtie-build $inref $bowtie_dbidx/ref`; # index
 	# alignment:
 	`bowtie -f -n 0 -v 0 -p $threads --quiet --no-unal -B 1 --sam --sam-nohead -f $bowtie_dbidx/ref $infas | cut -f 3,4 | sort -k1,1 -k2n,2 1>$outkpos 2>>$inlog`;
-	`rm $bowtie_dbidx -r`; # cleanup
+	`rm -r $bowtie_dbidx`; # cleanup
 }
 
 
