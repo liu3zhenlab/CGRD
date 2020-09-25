@@ -1,6 +1,7 @@
-### v0.3.1 (9/23/2020)
-1. modify prompt information to make clearer about bincounts
+### v0.3.2 (9/25/2020)
+1. modified prompt information to make clearer about bincounts
+2. fixed "newgrouplab" optioin in bingroup.pl
 
 ### v0.3.1 (9/10/2020)
-1. allow gzipped input read files
-2. add the cleanup option to enable removal of intermediate output
+1. aldded the option to allow gzipped input read files
+2. added the cleanup option to enable removal of intermediate output
