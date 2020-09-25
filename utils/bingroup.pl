@@ -9,7 +9,7 @@ my $hiquantile = 0.999;
 my $min = 20;
 my $maxdist = 5000;
 my $minbin = 5;
-my $newgrouplab = "_TMPNEWGROUPLAB";
+my $newgrouplab = "_TMPNEWGROUP";
 
 sub prompt {
     print <<EOF;
@@ -38,7 +38,7 @@ exit;
 my ($bc, $help);
 my %opts = ();
 &GetOptions(\%opts, "bc=s", "loquantile=f", "hiquantile=f",
-                    "min=i", "maxdist=i", "minbin=i", "help");
+                    "min=i", "maxdist=i", "minbin=i", "newgrouplab", "help");
 
 &prompt if exists $opts{help} or !%opts;
 $bc = $opts{bc} if exists $opts{bc};
