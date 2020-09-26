@@ -85,3 +85,6 @@ Please report any bugs or suggestion on github or by email to Sanzhen Liu (liu3z
 
 ### LICENSE
 CGRD is distributed under MIT licence.
+
+### CONTRIBUTIONS
+The idea was developed by Sanzhen Liu when he was in Schnable lab at Iowa State University. Guifang Lin tested the scripts. Thanks suggestions from Ha Le.
