@@ -38,7 +38,7 @@ exit;
 my ($bc, $help);
 my %opts = ();
 &GetOptions(\%opts, "bc=s", "loquantile=f", "hiquantile=f",
-                    "min=i", "maxdist=i", "minbin=i", "newgrouplab", "help");
+                    "min=i", "maxdist=i", "minbin=i", "newgrouplab=s", "help");
 
 &prompt if exists $opts{help} or !%opts;
 $bc = $opts{bc} if exists $opts{bc};
