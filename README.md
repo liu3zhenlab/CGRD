@@ -56,7 +56,7 @@ perl cgrd
 ```
 conda create -n cgrd
 conda activate cgrd
-conda install -c bioconda jellyfish bowtie bwa bedtools pandoc samtools=1.9
+conda install -c bioconda jellyfish bowtie bwa bedtools pandoc samtools=1.9 minimap2
 conda install -c r r-base r-knitr r-rmarkdown
 conda install -c bioconda bioconductor-DNAcopy
 
