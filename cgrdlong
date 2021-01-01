@@ -2,7 +2,7 @@
 #=============================================================
 # cgrd
 # author: Sanzhen Liu (liu3zhen@ksu.edu)
-# contributors: Ha Le, Guifang Lin
+# contributors: Guifang Lin, Patrick Schnable
 # 12/29/2020
 # comparative genomic depths of long reads (CGRDlong)
 #=============================================================
@@ -19,13 +19,13 @@ my $klen = 31;
 my $newgrouplabtext = "_TMPNEWGROUP";
 
 # default values
-my $minlen = 5000; # minimum sequence length
+my $minreadlen = 5000; # minimum sequence length
 my $knum = 300; # a bin contain 300 uniquely mapped k-mers 
 my $prefix = "cgrdo"; # default prefix for outputs
 my $threads = 1; # number of threads used for jellyfish, bowtie, and samtools
 my $groupval = "-5 -0.2 0.2 0.6"; #4 numbers for segment grouping
 my $loquantile = 0.001; # bins at the range lower than this percentile are not qualified 
-my $hiquantile = 0.999; # bins at the range higher than this percentile are not qualified
+my $hiquantile = 0.9999; # bins at the range higher than this percentile are not qualified
 my $mincountBin = 20; # minimum count of subj sample for a qualified bin
 my $maxdistBins = 5000; # maximum bp distance for neighbor bins to consider as a group for segmentation 
 my $chr2plot = "all"; # plot all available chr or contigs
@@ -38,7 +38,7 @@ sub prompt {
 	--ref <file>         reference genome FASTA file; required
 	--subj <str>         name of subject sample; required
     --readtype <str>     read type (options: ont and pb) ($readtype)
-	--minlen <num>       minimum sequnece bp; smaller sequences are filtered from fastq ($minlen)
+	--minreadlen <num>       minimum sequnece bp; smaller sequences are filtered from fastq ($minreadlen)
 	--sfq <file>         FASTQ file of the subject; a gzip file is accepted;
 	                     required if --sbam is not provided.
 	--sbam <file>        BAM alignment file; if provided, --sfq1 and --sfq2 will be ignored.
@@ -79,7 +79,7 @@ my ($qry, $qfq, $qbam, $binbed);
 ############# 
 my %opts = ();
 &GetOptions(\%opts, "ref=s", "subj=s", "qry=s", "version=s",
-                    "readtype=s", "minlen=i", "sfq=s", "qfq=s",
+                    "readtype=s", "minreadlen=i", "sfq=s", "qfq=s",
 					"sbam=s", "qbam=s", "knum=i", "binbed=s",
 					"loquantile=f", "hiquantile=f", "chr2plot=s",
 					"mincountBin=i", "maxdistBins=i", 
@@ -94,7 +94,7 @@ if (exists $opts{version}) {
 $ref = $opts{ref} if exists $opts{ref};
 $subj = $opts{subj} if exists $opts{subj};
 $readtype = $opts{readtype} if exists $opts{readtype};
-$minlen = $opts{minlen} if exists $opts{minlen};
+$minreadlen = $opts{minreadlen} if exists $opts{minreadlen};
 $qry = $opts{qry} if exists $opts{qry};
 $sfq = $opts{sfq} if exists $opts{sfq};
 $qfq = $opts{qfq} if exists $opts{qfq};
@@ -223,7 +223,7 @@ if (!defined $sbam) {
 	# length filter:
 	my $subj_fq_filename = $prefix."/".$prefix."_2a_sfq.filt.fq";
 	my $subj_fq_filt_summary = $prefix."/".$prefix."_2b_sfq.filt.summary";
-	`perl $scriptPath/utils/fq.size.filter.pl --min $minlen $sfq 1>$subj_fq_filename 2>$subj_fq_filt_summary`;
+	`perl $scriptPath/utils/fq.size.filter.pl --min $minreadlen $sfq 1>$subj_fq_filename 2>$subj_fq_filt_summary`;
 
 	# alignment and parsing:
 	`minimap2 -ax map-ont --secondary=no -t $threads $refmmi $subj_fq_filename 1>$subj_aln 2>>$runlog`;
@@ -263,7 +263,7 @@ if (!defined $qbam) {
 	# length filter:
 	my $qry_fq_filename = $prefix."/".$prefix."_2e_qfq.filt.fq";
 	my $qry_fq_filt_summary = $prefix."/".$prefix."_2f_qfq.filt.summary";
-	`perl $scriptPath/utils/fq.size.filter.pl --min $minlen $qfq 1>$qry_fq_filename 2>$qry_fq_filt_summary`;
+	`perl $scriptPath/utils/fq.size.filter.pl --min $minreadlen $qfq 1>$qry_fq_filename 2>$qry_fq_filt_summary`;
 
 	# alignment and parsing
 	`minimap2 -ax map-ont --secondary=no -t $threads $refmmi $qry_fq_filename 1>$qry_aln 2>>$runlog`;
@@ -310,7 +310,7 @@ my $chrsizef = $prefix."/chrsize.txt";
 # step 5: cnv and report
 #########################
 &runreport("Segmentation with R");
-my $rmd = $scriptPath."\/utils\/rdseg.Rmd";
+my $rmd = $scriptPath."\/utils\/cgrdlong.rdseg.Rmd";
 my $htmlout = $prefix."_".$qry."_".$subj.".report.html";
 my $outfile  = $prefix."_".$qry."_".$subj.".segments.txt";
 my $tmpRscript = $prefix."/".$prefix."_X_Rmd.render.R";
