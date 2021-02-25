@@ -13,7 +13,7 @@ use File::Temp;
 use FindBin;
 
 # hard setting
-my $version = "0.4";
+my $version = "0.3.3";
 my $klen = 31;
 my $newgrouplabtext = "_TMPNEWGROUP";
 
@@ -362,7 +362,7 @@ sub runreport {
 	print STDERR "  $injob.\n";
 	print LOG "$dateinfo  ";	
 	print LOG "  $injob.\n";
-}d
+}
 
 
 ###############################################
