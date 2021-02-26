@@ -228,7 +228,8 @@ if (!defined $sbam) {
 	&samfilt2bam($subj_aln); # filter and convert aln to BAM
 	
 	# cleanup
-	`rm $subj_aln; rm $subj_aln.filt`;
+	`rm $subj_aln`;
+	#rm $subj_aln.filt`;
 	#`rm $sfq1; rm $sfq2`;
 
 	$sbam = $subj_aln.".bam"; # subj BAM
@@ -268,7 +269,8 @@ if (!defined $qbam) {
 	`perl $scriptPath/utils/samparser.pl -i $qry_aln --libsize $qry_aln.libsize $samfilt 1>$qry_aln.filt 2>>$runlog`;
 	&samfilt2bam($qry_aln); # filter and convert aln to BAM	
 	# cleanup
-	`rm $qry_aln; rm $qry_aln.filt`;
+	`rm $qry_aln`;
+	#rm $qry_aln.filt;
 	#`rm $qfq1; rm $qfq2`;
 
 	$qbam = $qry_aln.".bam"; # qry BAM
