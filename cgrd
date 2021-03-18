@@ -223,7 +223,7 @@ if (!defined $sbam) {
 	}
 	
 	# alignment and parsing:
-	`bwa mem -t $threads -T 40 -S $bwa_dbidx/ref $sfq1 $sfq2 1> $subj_aln 2>>$runlog`;
+	`bwa mem -v 1 -t $threads -T 40 -S $bwa_dbidx/ref $sfq1 $sfq2 1> $subj_aln 2>>$runlog`;
 	`perl $scriptPath/utils/samparser.pl -i $subj_aln --libsize $subj_aln.libsize $samfilt 1>$subj_aln.filt 2>>$runlog`;
 	&samfilt2bam($subj_aln); # filter and convert aln to BAM
 	
@@ -265,7 +265,7 @@ if (!defined $qbam) {
 	}
 	
 	# alignment and parsing
-	`bwa mem -t $threads -T 40 -S $bwa_dbidx/ref $qfq1 $qfq2 1>$qry_aln 2>>$runlog`;
+	`bwa mem -v 1 -t $threads -T 40 -S $bwa_dbidx/ref $qfq1 $qfq2 1>$qry_aln 2>>$runlog`;
 	`perl $scriptPath/utils/samparser.pl -i $qry_aln --libsize $qry_aln.libsize $samfilt 1>$qry_aln.filt 2>>$runlog`;
 	&samfilt2bam($qry_aln); # filter and convert aln to BAM	
 	# cleanup
@@ -476,7 +476,7 @@ sub samfilt2bam {
 	my $insam = shift;
 	`samtools view -b -h -@ $threads $insam.filt > $insam.tmp`;
 	`samtools sort -o $insam.bam -@ $threads $insam.tmp`;
-	`samtools index $insam.bam`;
+	`samtools index -@ $threads $insam.bam`;
 	`rm $insam.tmp`;
 }
 

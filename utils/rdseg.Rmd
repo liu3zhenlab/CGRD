@@ -1,5 +1,5 @@
 ---
-title: "Segmentation of bin read counts"
+title: "Genome comparison through CGRD"
 date: "`r format(Sys.time(), '%d %B %Y')`"
 params:
   subj: null
@@ -199,8 +199,9 @@ write.table(seg2, file=outfile, row.names=F, col.names=F, quote=F, sep="\t")
 #seg2$Len <- as.numeric(as.character(seg2[,3])) - as.numeric(as.character(seg[,2])) + 1
 seg2$Len <- seg2[,3] - seg2[,2] + 1 
 lensum <- tapply(seg2$Len, seg2[,6], sum)
-numSeg <- table(seg2[, 6])
+numSeg <- table(as.character(seg2[, 6]))
 groups <- names(numSeg)
+numSeg <- as.numeric(numSeg)
 segstat <- data.frame(Group=groups, Num_segments=numSeg, Len_segments=lensum[groups])
 kable(segstat, caption="Table 1. Statistics of segmentation output", row.names=F)
 ```
@@ -313,7 +314,7 @@ dev.off()
 ```
 
 
-```{r, echo=FALSE, result="hide", fig.align='center', fig.cap="Fig 2. CGRD logRD plot", fig.height=4, fig.width=8, message=F, warning=F}
+```{r, echo=FALSE, result="hide", fig.align='center', fig.cap="Fig 2. CGRD logRD plot", fig.height=8, fig.width=8, message=F, warning=F}
 ##################
 # plot
 ##################
