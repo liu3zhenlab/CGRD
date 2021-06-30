@@ -2,7 +2,7 @@
 *Comparative Genomic Read Depth*
 
 CGRD is a pipeline to compare sequencing read depths from two samples along a reference genome. Three major steps are involved:  
-1. define effective genomic bins each of which habors certain non-repetitive sequences  
+1. define effective genomic bins each of which harbors certain non-repetitive sequences  
 2. align reads and count read depths per bin for both samples  
 3. combine neighbor bins with similar fold changes in read depth between the two samples (segmentation)  
 
