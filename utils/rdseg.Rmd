@@ -11,6 +11,8 @@ params:
   chr2plot: null
   newgrouplab: null
   outfile: null
+  pdfWidth: null
+  pdfHeight: null
   version: null
 output:
   html_document: default
@@ -26,6 +28,8 @@ newgrouplab <- params$newgrouplab
 libsizef <- params$libsizef
 chrsizef <- params$chrsizef
 outfile <- params$outfile
+pdfWidth <- params$pdfWidth
+pdfHeight <- params$pdfHeight
 version <- params$version
 
 library("knitr")
@@ -230,7 +234,7 @@ xmax <- max(chrsize$Len)/xunit
 ##################
 ### save to PDF file
 ##################
-pdf(plot.file, width = 7.5, height = 8.5)
+pdf(plot.file, width = pdfWidth, height = pdfHeight)
 
 ##################
 # plot

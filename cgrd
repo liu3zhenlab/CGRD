@@ -9,11 +9,12 @@
 use strict;
 use warnings;
 use Getopt::Long;
+use Term::ANSIColor qw(:constants);
 use File::Temp;
 use FindBin;
 
 # hard setting
-my $version = "0.3.3";
+my $version = "0.3.4";
 my $klen = 31;
 my $newgrouplabtext = "_TMPNEWGROUP";
 
@@ -28,6 +29,8 @@ my $hiquantile = 0.999; # bins at the range higher than this percentile are not 
 my $mincountBin = 20; # minimum count of subj sample for a qualified bin
 my $maxdistBins = 5000; # maximum bp distance for neighbor bins to consider as a group for segmentation 
 my $chr2plot = "all"; # plot all available chr or contigs
+my $pdfWidth = 7; # the width in inch of the output PDF
+my $pdfHeight = 7.5; # the height in inch of the output PDF
 
 sub prompt {
 	print <<EOF;
@@ -60,13 +63,15 @@ sub prompt {
 	                     if the distance is larger than $maxdistBins, two neighbor bins are separated into different groups for segmentation
 	--chr2plot <str>     list of chr or contigs to be plotted, separated by space (all)
 	                     e.g., "1 2 3": chromosomes 1, 2, 3 will be plotted
+	--pdfWidth <float>   the width in inch of the output PDF ($pdfWidth)
+	--pdfHeight <float>  the height in inch of the output PDF ($pdfHeight)
 	--cleanup            clean up intermediate outputs if specified; off by default
 	--version            version
 	--help               help information
 	
 	o example:
-	perl cgrd --ref <fas> \
-		 --subj s1 --sfq1 s1_1.fq --sfq2 s1_2.fq \
+	perl cgrd --ref <fas> \\
+		 --subj s1 --sfq1 s1_1.fq --sfq2 s1_2.fq \\
 		 --qry s2 --qfq1 s2_1.fq --qfq2 s2_2.fq
 EOF
 exit;
@@ -84,7 +89,8 @@ my %opts = ();
                     "sfq1=s", "sfq2=s", "qfq1=s", "qfq2=s",
 					"sbam=s", "qbam=s", "knum=i", "binbed=s",
 					"loquantile=f", "hiquantile=f", "chr2plot=s",
-					"mincountBin=i", "maxdistBins=i", 
+					"pdfWidth=f", "pdfHeight=f",
+					"mincountBin=i", "maxdistBins=i", "groupval=s", 
 					"threads=i", "prefix=s", "samfilt=s", "cleanup", "help");
 
 if (exists $opts{version}) { 
@@ -102,10 +108,16 @@ $qfq1 = $opts{qfq1} if exists $opts{qfq1};
 exists $opts{qfq2} ? $qfq2 = $opts{qfq2} : $qfq2 = "";
 $sbam = $opts{sbam} if exists $opts{sbam};
 $qbam = $opts{qbam} if exists $opts{qbam};
+$knum = $opts{knum} if exists $opts{knum};
 $binbed = $opts{binbed} if exists $opts{binbed};
 $threads = $opts{threads} if exists $opts{threads};
 $samfilt = $opts{samfilt} if (exists $opts{samfilt});
 $prefix = $opts{prefix} if (exists $opts{prefix});
+
+#log file
+my $runlog = $prefix.".run.log";
+open(LOG, ">$runlog") || die;
+
 $groupval = $opts{groupval} if (exists $opts{groupval});
 $groupval = &spacesep($groupval);
 $loquantile = $opts{loquantile} if (exists $opts{loquantile});
@@ -114,6 +126,8 @@ $mincountBin = $opts{mincountBin} if (exists $opts{mincountBin});
 $maxdistBins = $opts{maxdistBins} if (exists $opts{maxdistBins});
 $chr2plot = $opts{chr2plot} if (exists $opts{chr2plot});
 $chr2plot = &spacesep($chr2plot);
+$pdfWidth = $opts{pdfWidth} if (exists $opts{pdfWidth});
+$pdfHeight = $opts{pdfHeight} if (exists $opts{pdfHeight});
 
 my @groupval = split(" ", $groupval);
 if ($#groupval != 3) {
@@ -136,12 +150,35 @@ if (!defined $ref or !defined $subj or !defined $qry) {
 	exit;
 }
 
-#############
-# scripts
-#############
+#############################################
+# utility scripts
+#############################################
 # script path:
 my $scriptPath = $FindBin::Bin;
 my $binPath = $scriptPath."/bin/";
+my $utilPath = $scriptPath."/utils/";
+#############################################
+# check requirments
+#############################################
+&cmd_check("R");
+&cmd_check("bedtools");
+&cmd_check("awk");
+&cmd_check("bowtie");
+&cmd_check("bwa");
+&cmd_check("jellyfish");
+&cmd_check("minimap2");
+&cmd_check("pandoc");
+
+my $rpackage_check=`Rscript $utilPath/rpackages.check.R`;
+chomp $rpackage_check;
+if ($rpackage_check eq "Passed") {
+	&runreport("required R packages installed");
+} else {
+	&runreport("required R packages missing");
+	exit;
+}
+
+&runreport("yeah! software requirements checked");
 
 #############
 # output
@@ -153,19 +190,19 @@ if (-d $prefix) {
 	`mkdir $prefix`;
 }
 
-#log file
-my $runlog = $prefix.".run.log";
-open(LOG, ">$runlog") || die;
-
 ##############
 # step 1. bin
 ##############
 if (!defined $binbed) {
 # fas2kmer
-	&runreport("generating k-mers from reference");
 	my $kfas_file=$prefix."/".$prefix."_1a_uniqkmer.fas";
-	&kgen($ref, $prefix, $kfas_file, $runlog);
-
+	if (-f $ref) {	
+		&runreport("generating k-mers from reference");
+		&kgen($ref, $prefix, $kfas_file, $runlog);
+	} else {
+		&runreport("The reference \($ref\) is not found");
+		exit;
+	}
 # kmer mapping
 	&runreport("mapping k-mers to reference");
 	my $kpos_file=$prefix."/".$prefix."_1b_uniqkmer.pos";
@@ -223,13 +260,15 @@ if (!defined $sbam) {
 	}
 	
 	# alignment and parsing:
-	`bwa mem -v 1 -t $threads -T 40 -S $bwa_dbidx/ref $sfq1 $sfq2 1> $subj_aln 2>>$runlog`;
+	`bwa mem -v 1 -t $threads -T 40 $bwa_dbidx/ref $sfq1 $sfq2 1> $subj_aln 2>>$runlog`;
 	`perl $scriptPath/utils/samparser.pl -i $subj_aln --libsize $subj_aln.libsize $samfilt 1>$subj_aln.filt 2>>$runlog`;
+	
+	# sam2bam
 	&samfilt2bam($subj_aln); # filter and convert aln to BAM
 	
 	# cleanup
 	`rm $subj_aln`;
-	#rm $subj_aln.filt`;
+	#`rm $subj_aln.filt`;
 	#`rm $sfq1; rm $sfq2`;
 
 	$sbam = $subj_aln.".bam"; # subj BAM
@@ -265,12 +304,15 @@ if (!defined $qbam) {
 	}
 	
 	# alignment and parsing
-	`bwa mem -v 1 -t $threads -T 40 -S $bwa_dbidx/ref $qfq1 $qfq2 1>$qry_aln 2>>$runlog`;
+	`bwa mem -v 1 -t $threads -T 40 $bwa_dbidx/ref $qfq1 $qfq2 1>$qry_aln 2>>$runlog`;
 	`perl $scriptPath/utils/samparser.pl -i $qry_aln --libsize $qry_aln.libsize $samfilt 1>$qry_aln.filt 2>>$runlog`;
+	
+	# sam2bam
 	&samfilt2bam($qry_aln); # filter and convert aln to BAM	
+	
 	# cleanup
 	`rm $qry_aln`;
-	#rm $qry_aln.filt;
+	#`rm $qry_aln.filt;
 	#`rm $qfq1; rm $qfq2`;
 
 	$qbam = $qry_aln.".bam"; # qry BAM
@@ -327,6 +369,8 @@ print TMPR "    libsizef=\"$libsizef\",\n";
 print TMPR "    chrsizef=\"$chrsizef\",\n";
 print TMPR "    outfile=\"$outfile\",\n";
 print TMPR "    groupval=\"$groupval\",\n";
+print TMPR "    pdfWidth=\"$pdfWidth\",\n";
+print TMPR "    pdfHeight=\"$pdfHeight\",\n";
 print TMPR "    chr2plot=\"$chr2plot\",\n";
 print TMPR "    newgrouplab=\"$newgrouplabtext\"\),\n";
 print TMPR "  knit_root_dir=getwd\(\),\n";
@@ -352,19 +396,6 @@ if (exists $opts{cleanup}) {
 }
 
 close LOG;
-
-###############################################
-# module 0: report running result
-################################################
-# funtion to report running return
-sub runreport {
-	my $injob = shift;
-	my $dateinfo = `date +'o %Y-%m-%d %H:%M:%S'`;
-	print STDERR "$dateinfo";
-	print STDERR "  $injob.\n";
-	print LOG "$dateinfo  ";	
-	print LOG "  $injob.\n";
-}
 
 
 ###############################################
@@ -491,4 +522,32 @@ sub spacesep {
 	$inval =~ s/ +/ /g; # replace multiple spaces into one
 	return($inval);
 }
+
+
+###############################################
+# module 6: check command availability
+################################################
+sub cmd_check {
+	my $cmd = shift;
+	my $cmdPath=`which $cmd 2>/dev/null`;
+	if (!$cmdPath) {# not founded
+		print STDERR RED, "  $cmd is not found\n", RESET;
+		print STDERR RED, "Exit\n", RESET;
+		exit;
+	}
+}
+
+###############################################
+# module 7: report running result
+###############################################
+# funtion to report running return
+sub runreport {
+	my $injob = shift;
+	my $dateinfo = `date +'o %Y-%m-%d %H:%M:%S'`;
+	print STDERR MAGENTA, "$dateinfo", RESET;
+	print STDERR "  $injob.\n";
+	print LOG "$dateinfo  ";    
+	print LOG "  $injob.\n";
+}
+
 

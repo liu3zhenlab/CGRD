@@ -10,6 +10,8 @@ params:
   groupval: null
   chr2plot: null
   newgrouplab: null
+  pdfWidth: null
+  pdfHeight: null
   outfile: null
   version: null
 output:
@@ -26,6 +28,8 @@ newgrouplab <- params$newgrouplab
 libsizef <- params$libsizef
 chrsizef <- params$chrsizef
 outfile <- params$outfile
+pdfWidth <- params$pdfWidth
+pdfHeight <- params$pdfHeight
 version <- params$version
 
 library("knitr")
@@ -237,7 +241,7 @@ xmax <- max(chrsize$Len)/xunit
 ##################
 ### save to PDF file
 ##################
-pdf(plot.file, width = 7.5, height = 8.5)
+pdf(plot.file, width = pdfWidth, height = pdfHeight)
 
 ##################
 # plot
@@ -395,9 +399,9 @@ for (j in 1:num.chrs) { # all chrs / contigs
   ##################
   # plot yaxis
   ##################
-   yaxis.pos <- c(-6, -3, 0, 3)
-    label.pos <- c(-6, -3, 0, 3)
-    plotaxis(x=rep(xleft, length(yaxis.pos)), y= yaxis.pos+shift,
+  yaxis.pos <- c(-6, -3, 0, 3)
+  label.pos <- c(-6, -3, 0, 3)
+  plotaxis(x=rep(xleft, length(yaxis.pos)), y= yaxis.pos+shift,
            at.ticks=yaxis.pos+shift, ticklen=xmax/200, tick.labs=label.pos,
            labeltext=chrs[j])
   

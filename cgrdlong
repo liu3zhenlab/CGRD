@@ -1,8 +1,7 @@
 #!/use/bin/perl -w
 #=============================================================
-# cgrd
-# author: Sanzhen Liu (liu3zhen@ksu.edu)
-# contributors: Guifang Lin, Patrick Schnable
+# cgrdlong
+# author: Guifang Lin and Sanzhen Liu (liu3zhen@ksu.edu)
 # 12/29/2020
 # comparative genomic depths of long reads (CGRDlong)
 #=============================================================
@@ -10,35 +9,41 @@
 use strict;
 use warnings;
 use Getopt::Long;
+use Term::ANSIColor qw(:constants);
 use File::Temp;
 use FindBin;
 
 # hard setting
-my $version = "0.1";
+my $version = "0.2.0";
 my $klen = 31;
 my $newgrouplabtext = "_TMPNEWGROUP";
 
 # default values
-my $minreadlen = 5000; # minimum sequence length
-my $knum = 300; # a bin contain 300 uniquely mapped k-mers 
-my $prefix = "cgrdo"; # default prefix for outputs
+my $splitreadlen = 5000; # read length that raw reads to be split
+my $minreadlen = 3000; # minimum sequence length
+my $knum = 5000; # a bin contain 300 uniquely mapped k-mers 
+my $prefix = "cgrdlongOut"; # default prefix for outputs
 my $threads = 1; # number of threads used for jellyfish, bowtie, and samtools
-my $groupval = "-5 -0.2 0.2 0.6"; #4 numbers for segment grouping
+my $groupval = "-5 -0.5 0.5 1"; #4 numbers for segment grouping
 my $loquantile = 0.001; # bins at the range lower than this percentile are not qualified 
 my $hiquantile = 0.9999; # bins at the range higher than this percentile are not qualified
-my $mincountBin = 20; # minimum count of subj sample for a qualified bin
-my $maxdistBins = 5000; # maximum bp distance for neighbor bins to consider as a group for segmentation 
+my $mincountBin = 50; # minimum count of subj sample for a qualified bin
+my $maxdistBins = 10000; # maximum bp distance for neighbor bins to consider as a group for segmentation 
 my $chr2plot = "all"; # plot all available chr or contigs
 my $readtype = "ont";
+my $pdfWidth = 7; # the width in inch of the output PDF
+my $pdfHeight = 7.5; # the height in inch of the output PDF
+
 
 sub prompt {
 	print <<EOF;
-	Usage: perl cgrd [options]
+	Usage: perl cgrdlong [options]
 	[Options]
 	--ref <file>         reference genome FASTA file; required
 	--subj <str>         name of subject sample; required
-    --readtype <str>     read type (options: ont and pb) ($readtype)
-	--minreadlen <num>       minimum sequnece bp; smaller sequences are filtered from fastq ($minreadlen)
+	--readtype <str>     read type (options: ont and pb) ($readtype)
+	--splitreadlen <num> read bp length that raw reads to be split ($splitreadlen)
+	--minreadlen <num>   minimum sequnece bp; smaller sequences are filtered from fastq ($minreadlen)
 	--sfq <file>         FASTQ file of the subject; a gzip file is accepted;
 	                     required if --sbam is not provided.
 	--sbam <file>        BAM alignment file; if provided, --sfq1 and --sfq2 will be ignored.
@@ -59,6 +64,8 @@ sub prompt {
 	                     if the distance is larger than $maxdistBins, two neighbor bins are separated into different groups for segmentation
 	--chr2plot <str>     list of chr or contigs to be plotted, separated by space (all)
 	                     e.g., "1 2 3": chromosomes 1, 2, 3 will be plotted
+	--pdfWidth <float>   the width in inch of the output PDF ($pdfWidth)
+	--pdfHeight <float>  the height in inch of the output PDF ($pdfHeight)
 	--cleanup            clean up intermediate outputs if specified; off by default
 	--version            version
 	--help               help information
@@ -82,6 +89,7 @@ my %opts = ();
                     "readtype=s", "minreadlen=i", "sfq=s", "qfq=s",
 					"sbam=s", "qbam=s", "knum=i", "binbed=s",
 					"loquantile=f", "hiquantile=f", "chr2plot=s",
+					"pdfWidth=f", "pdfHeight=f", "splitreadlen=i",
 					"mincountBin=i", "maxdistBins=i", 
 					"threads=i", "prefix=s", "samfilt=s", "cleanup", "help");
 
@@ -94,15 +102,21 @@ if (exists $opts{version}) {
 $ref = $opts{ref} if exists $opts{ref};
 $subj = $opts{subj} if exists $opts{subj};
 $readtype = $opts{readtype} if exists $opts{readtype};
+$splitreadlen = $opts{splitreadlen} if exists $opts{splitreadlen};
 $minreadlen = $opts{minreadlen} if exists $opts{minreadlen};
 $qry = $opts{qry} if exists $opts{qry};
 $sfq = $opts{sfq} if exists $opts{sfq};
 $qfq = $opts{qfq} if exists $opts{qfq};
 $sbam = $opts{sbam} if exists $opts{sbam};
 $qbam = $opts{qbam} if exists $opts{qbam};
+$knum = $opts{knum} if exists $opts{knum};
 $binbed = $opts{binbed} if exists $opts{binbed};
 $threads = $opts{threads} if exists $opts{threads};
 $prefix = $opts{prefix} if (exists $opts{prefix});
+#log file
+my $runlog = $prefix.".run.log";
+open(LOG, ">$runlog") || die;
+
 $groupval = $opts{groupval} if (exists $opts{groupval});
 $groupval = &spacesep($groupval);
 $loquantile = $opts{loquantile} if (exists $opts{loquantile});
@@ -111,6 +125,8 @@ $mincountBin = $opts{mincountBin} if (exists $opts{mincountBin});
 $maxdistBins = $opts{maxdistBins} if (exists $opts{maxdistBins});
 $chr2plot = $opts{chr2plot} if (exists $opts{chr2plot});
 $chr2plot = &spacesep($chr2plot);
+$pdfWidth = $opts{pdfWidth} if (exists $opts{pdfWidth});
+$pdfHeight = $opts{pdfHeight} if (exists $opts{pdfHeight});
 
 my @groupval = split(" ", $groupval);
 if ($#groupval != 3) {
@@ -133,26 +149,46 @@ if (!defined $ref or !defined $subj or !defined $qry) {
 	exit;
 }
 
-#############
+############################################# 
 # scripts
-#############
+############################################# 
 # script path:
 my $scriptPath = $FindBin::Bin;
 my $binPath = $scriptPath."/bin/";
+my $utilPath = $scriptPath."/utils/";
+
+#############################################
+# check requirments
+#############################################
+&cmd_check("R");
+&cmd_check("bedtools");
+&cmd_check("awk");
+&cmd_check("bowtie");
+&cmd_check("bwa");
+&cmd_check("jellyfish");
+&cmd_check("minimap2");
+&cmd_check("pandoc");
+
+my $rpackage_check=`Rscript $utilPath/rpackages.check.R`;
+chomp $rpackage_check;
+if ($rpackage_check eq "Passed") {
+	&runreport("required R packages installed");
+} else {
+	&runreport("required R packages missing");
+	exit;
+}
+
+&runreport("yeah! software requirements checked");
 
 #############
 # output
 #############
 if (-d $prefix) {
-	print STDERR "$prefix exists!\n";
+	print STDERR RED, "\n$prefix exists!\n\n", RESET;
 	#exit;
 } else {
 	`mkdir $prefix`;
 }
-
-#log file
-my $runlog = $prefix.".run.log";
-open(LOG, ">$runlog") || die;
 
 ##############
 # step 1. bin
@@ -175,6 +211,7 @@ if (!defined $binbed) {
 
 	$binbed = $bin_bedfile; # Bin file
 } else {
+	
 	print LOG "the following binBED file was provided:\n";
 	print LOG "  $binbed\n";
 }
@@ -211,7 +248,7 @@ if (!defined $sbam or !defined $qbam) {
 my $subj_aln=$prefix."/".$prefix."_2c_".$subj;
 my $subj_libsize;
 if (!defined $sbam) {
-	&runreport("subj alignment");
+	&runreport("processing query reads");
 	
 	# if input reads are gzipped:
 	if ($sfq =~ /gz$/) {
@@ -221,11 +258,13 @@ if (!defined $sbam) {
 	}
 	
 	# length filter:
-	my $subj_fq_filename = $prefix."/".$prefix."_2a_sfq.filt.fq";
-	my $subj_fq_filt_summary = $prefix."/".$prefix."_2b_sfq.filt.summary";
-	`perl $scriptPath/utils/fq.size.filter.pl --min $minreadlen $sfq 1>$subj_fq_filename 2>$subj_fq_filt_summary`;
+	my $subj_fq_filename = $prefix."/".$prefix."_2a_sfq.split.fq";
+	my $subj_fq_summary = $prefix."/".$prefix."_2b_sfq.split.summary";
+	#`perl $scriptPath/utils/fq.size.filter.pl --min $minreadlen $sfq 1>$subj_fq_filename 2>$subj_fq_summary`;
+	`perl  $utilPath/fq.reads.split.pl --length $splitreadlen --min $minreadlen $sfq 1>$subj_fq_filename 2>$subj_fq_summary`;
 
 	# alignment and parsing:
+	&runreport("subj alignment");
 	`minimap2 -ax map-ont --secondary=no -t $threads $refmmi $subj_fq_filename 1>$subj_aln 2>>$runlog`;
 	&sam2bam($subj_aln); # filter and convert aln to BAM
 	
@@ -236,7 +275,7 @@ if (!defined $sbam) {
 	$sbam = $subj_aln.".bam"; # subj BAM
 
 	# output library size:
-	$subj_libsize = `grep "valid_bps" $subj_fq_filt_summary | cut -f 2`;
+	$subj_libsize = `grep "split_reads" $subj_fq_summary | cut -f 2`;
 } else {
 	print LOG "the following subjBAM was provide:\n";
 	print LOG "  $sbam\n";
@@ -251,7 +290,7 @@ print LS "$subj\t$subj_libsize\n";
 my $qry_aln=$prefix."/".$prefix."_2d_".$qry;
 my $qry_libsize;
 if (!defined $qbam) {
-	&runreport("query alignment");
+	&runreport("processing query reads");
 	
 	# if input reads are gzipped:
 	if ($qfq =~ /gz$/) {
@@ -261,12 +300,15 @@ if (!defined $qbam) {
 	}
 
 	# length filter:
-	my $qry_fq_filename = $prefix."/".$prefix."_2e_qfq.filt.fq";
-	my $qry_fq_filt_summary = $prefix."/".$prefix."_2f_qfq.filt.summary";
-	`perl $scriptPath/utils/fq.size.filter.pl --min $minreadlen $qfq 1>$qry_fq_filename 2>$qry_fq_filt_summary`;
+	my $qry_fq_filename = $prefix."/".$prefix."_2e_qfq.split.fq";
+	my $qry_fq_summary = $prefix."/".$prefix."_2f_qfq.split.summary";
+	#`perl $scriptPath/utils/fq.size.filter.pl --min $minreadlen $qfq 1>$qry_fq_filename 2>$qry_fq_summary`;
+	`perl $utilPath/fq.reads.split.pl --length $splitreadlen --min $minreadlen $qfq 1>$qry_fq_filename 2>$qry_fq_summary`;
 
 	# alignment and parsing
+	&runreport("query alignment");
 	`minimap2 -ax map-ont --secondary=no -t $threads $refmmi $qry_fq_filename 1>$qry_aln 2>>$runlog`;
+	
 	&sam2bam($qry_aln); # filter and convert aln to BAM	
 	# cleanup
 	`rm $qry_aln`;
@@ -275,7 +317,7 @@ if (!defined $qbam) {
 	$qbam = $qry_aln.".bam"; # qry BAM
 	
 	# output library size:
-	$qry_libsize = `grep "valid_bps" $qry_fq_filt_summary | cut -f 2`;
+	$qry_libsize = `grep "split_reads" $qry_fq_summary | cut -f 2`;
 } else {
 	print LOG "the following qryBAM was provide:\n";
 	print LOG "  $qbam\n";
@@ -327,6 +369,8 @@ print TMPR "    bc=\"$bincount_file\",\n";
 print TMPR "    libsizef=\"$libsizef\",\n";
 print TMPR "    chrsizef=\"$chrsizef\",\n";
 print TMPR "    outfile=\"$outfile\",\n";
+print TMPR "    pdfWidth=\"$pdfWidth\",\n";
+print TMPR "    pdfHeight=\"$pdfHeight\",\n";
 print TMPR "    groupval=\"$groupval\",\n";
 print TMPR "    chr2plot=\"$chr2plot\",\n";
 print TMPR "    newgrouplab=\"$newgrouplabtext\"\),\n";
@@ -353,19 +397,6 @@ if (exists $opts{cleanup}) {
 }
 
 close LOG;
-
-###############################################
-# module 0: report running result
-################################################
-# funtion to report running return
-sub runreport {
-	my $injob = shift;
-	my $dateinfo = `date +'o %Y-%m-%d %H:%M:%S'`;
-	print STDERR "$dateinfo";
-	print STDERR "  $injob.\n";
-	print LOG "$dateinfo  ";	
-	print LOG "  $injob.\n";
-}
 
 
 ###############################################
@@ -490,4 +521,31 @@ sub spacesep {
 	$inval =~ s/ +/ /g; # replace multiple spaces into one
 	return($inval);
 }
+
+###############################################
+# module 6: check command availability
+################################################
+sub cmd_check {
+	my $cmd = shift;
+	my $cmdPath=`which $cmd 2>/dev/null`;
+	if (!$cmdPath) {# not founded
+		print STDERR RED, "  $cmd is not found\n", RESET;
+		print STDERR RED, "Exit\n", RESET;
+		exit;
+	}
+}
+
+###############################################
+# module 7: report running result
+###############################################
+# funtion to report running return
+sub runreport {
+	my $injob = shift;
+	my $dateinfo = `date +'o %Y-%m-%d %H:%M:%S'`;
+	print STDERR MAGENTA, "$dateinfo", RESET;
+	print STDERR "  $injob.\n";
+	print LOG "$dateinfo  ";    
+	print LOG "  $injob.\n";
+}
+
 
