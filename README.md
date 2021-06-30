@@ -4,7 +4,7 @@
 CGRD is a pipeline to compare sequencing read depths from two samples along a reference genome. Three major steps are involved:  
 1. define effective genomic bins each of which harbors certain non-repetitive sequences  
 2. align reads and count read depths per bin for both samples  
-3. combine neighbor bins with similar fold changes in read depth between the two samples (segmentation)  
+3. combine neighboring bins with similar fold changes in read depth between the two samples (segmentation)  
 
 From the result, genomic segments with similar and differential (higher or lower) read depths are obtained. Therefore, genomic copy number variation (CNV) based on read depths can be extracted from the result and visualized on the genome map.
 
