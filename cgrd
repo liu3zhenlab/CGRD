@@ -20,7 +20,7 @@ my $newgrouplabtext = "_TMPNEWGROUP";
 
 # default values
 my $knum = 300; # a bin contain 300 uniquely mapped k-mers 
-my $prefix = "cgrdo"; # default prefix for outputs
+my $prefix = "cgrdout"; # default prefix for outputs
 my $threads = 1; # number of threads used for jellyfish, bowtie, and samtools
 my $samfilt = "--identical 60 --mismatch 5 100 --tail 5 100 --insert 100 1000"; # filter parameters
 my $groupval = "-5 -0.2 0.2 0.6"; #4 numbers for segment grouping
