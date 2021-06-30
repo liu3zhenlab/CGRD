@@ -1,6 +1,11 @@
 ### 1/1/2021
 1. add cgrdlong and related scripts
 
+### v0.3.4 (6/30/2021)
+1. added the step to check required software packages
+2. fixed the issue associated with --knum
+3. modified cgrdlong
+
 ### v0.3.3 (12/30/2020)
 1. fix a bug in bingroup.pl
 2. fix the bug that might be from DNAcopy
