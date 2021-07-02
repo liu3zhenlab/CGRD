@@ -20,8 +20,8 @@ my $newgrouplabtext = "_TMPNEWGROUP";
 
 # default values
 my $splitreadlen = 5000; # read length that raw reads to be split
-my $minreadlen = 3000; # minimum sequence length
-my $knum = 5000; # a bin contain 300 uniquely mapped k-mers 
+my $minreadlen = 4000; # minimum sequence length
+my $knum = 5000; # the number of uniquely mapped k-mers needed for a bin 
 my $prefix = "cgrdlongOut"; # default prefix for outputs
 my $threads = 1; # number of threads used for jellyfish, bowtie, and samtools
 my $groupval = "-5 -0.5 0.5 1"; #4 numbers for segment grouping
@@ -90,7 +90,7 @@ my %opts = ();
 					"sbam=s", "qbam=s", "knum=i", "binbed=s",
 					"loquantile=f", "hiquantile=f", "chr2plot=s",
 					"pdfWidth=f", "pdfHeight=f", "splitreadlen=i",
-					"mincountBin=i", "maxdistBins=i", 
+					"mincountBin=i", "maxdistBins=i", "groupval=s", 
 					"threads=i", "prefix=s", "samfilt=s", "cleanup", "help");
 
 if (exists $opts{version}) { 
@@ -248,7 +248,7 @@ if (!defined $sbam or !defined $qbam) {
 my $subj_aln=$prefix."/".$prefix."_2c_".$subj;
 my $subj_libsize;
 if (!defined $sbam) {
-	&runreport("processing query reads");
+	&runreport("processing subj reads");
 	
 	# if input reads are gzipped:
 	if ($sfq =~ /gz$/) {

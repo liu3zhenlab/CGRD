@@ -244,7 +244,7 @@ if (!defined $sbam or !defined $qbam) {
 my $subj_aln=$prefix."/".$prefix."_2a_".$subj;
 my $subj_libsize;
 if (!defined $sbam) {
-	&runreport("subj alignment");
+	&runreport("processing subj reads");
 	
 	# if input reads are gzipped:
 	if ($sfq1 =~ /gz$/) {
@@ -260,6 +260,7 @@ if (!defined $sbam) {
 	}
 	
 	# alignment and parsing:
+	&runreport("subj alignment");
 	`bwa mem -v 1 -t $threads -T 40 $bwa_dbidx/ref $sfq1 $sfq2 1> $subj_aln 2>>$runlog`;
 	`perl $scriptPath/utils/samparser.pl -i $subj_aln --libsize $subj_aln.libsize $samfilt 1>$subj_aln.filt 2>>$runlog`;
 	
@@ -288,7 +289,7 @@ print LS "$subj\t$subj_libsize\n";
 my $qry_aln=$prefix."/".$prefix."_2b_".$qry;
 my $qry_libsize;
 if (!defined $qbam) {
-	&runreport("query alignment");
+	&runreport("processing query reads");
 	
 	# if input reads are gzipped:
 	if ($qfq1 =~ /gz$/) {
@@ -304,6 +305,7 @@ if (!defined $qbam) {
 	}
 	
 	# alignment and parsing
+	&runreport("query alignment");
 	`bwa mem -v 1 -t $threads -T 40 $bwa_dbidx/ref $qfq1 $qfq2 1>$qry_aln 2>>$runlog`;
 	`perl $scriptPath/utils/samparser.pl -i $qry_aln --libsize $qry_aln.libsize $samfilt 1>$qry_aln.filt 2>>$runlog`;
 	
