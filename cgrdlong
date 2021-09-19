@@ -244,8 +244,13 @@ if (!defined $sbam or !defined $qbam) {
 	`minimap2 -x $maptype -d $refmmi $ref`;
 }
 
+# alignment filtering criteria:
+my $min_identical_match = int($splitreadlen * 0.8);
+my $filt_criteria = "--identical $min_identical_match --mismatches 15 100 --tail 5 100";
+
 # subj minimap2 alignments:
-my $subj_aln=$prefix."/".$prefix."_2c_".$subj;
+my $subj_aln=$prefix."/".$prefix."_2c_".$subj.".sam";
+my $subj_tmpaln=$subj_aln.".tmp";
 my $subj_libsize;
 if (!defined $sbam) {
 	&runreport("processing subj reads");
@@ -262,15 +267,15 @@ if (!defined $sbam) {
 	my $subj_fq_summary = $prefix."/".$prefix."_2b_sfq.split.summary";
 	#`perl $scriptPath/utils/fq.size.filter.pl --min $minreadlen $sfq 1>$subj_fq_filename 2>$subj_fq_summary`;
 	`perl  $utilPath/fq.reads.split.pl --length $splitreadlen --min $minreadlen $sfq 1>$subj_fq_filename 2>$subj_fq_summary`;
-
 	# alignment and parsing:
 	&runreport("subj alignment");
-	`minimap2 -ax map-ont --secondary=no -t $threads $refmmi $subj_fq_filename 1>$subj_aln 2>>$runlog`;
+	`minimap2 -ax map-ont --secondary=no -t $threads $refmmi $subj_fq_filename 1>$subj_tmpaln 2>>$runlog`;
+	`perl  $utilPath/samparser.minimap2.pl --input $subj_tmpaln $filt_criteria 1>$subj_aln 2>>$runlog`;
 	&sam2bam($subj_aln); # filter and convert aln to BAM
 	
 	# cleanup
 	`rm $subj_aln`;
-	`rm $subj_fq_filename`;
+	#`rm $subj_fq_filename`;
 
 	$sbam = $subj_aln.".bam"; # subj BAM
 
@@ -287,7 +292,8 @@ chomp($subj_libsize);
 print LS "$subj\t$subj_libsize\n";
 
 # qry bwa alignments:
-my $qry_aln=$prefix."/".$prefix."_2d_".$qry;
+my $qry_aln=$prefix."/".$prefix."_2d_".$qry.".sam";
+my $qry_tmpaln = $qry_aln.".tmp";
 my $qry_libsize;
 if (!defined $qbam) {
 	&runreport("processing query reads");
@@ -307,12 +313,12 @@ if (!defined $qbam) {
 
 	# alignment and parsing
 	&runreport("query alignment");
-	`minimap2 -ax map-ont --secondary=no -t $threads $refmmi $qry_fq_filename 1>$qry_aln 2>>$runlog`;
-	
+	`minimap2 -ax map-ont --secondary=no -t $threads $refmmi $qry_fq_filename 1>$qry_tmpaln 2>>$runlog`;
+	`perl  $utilPath/samparser.minimap2.pl --input $qry_tmpaln $filt_criteria 1>$qry_aln 2>>$runlog`;
 	&sam2bam($qry_aln); # filter and convert aln to BAM	
 	# cleanup
 	`rm $qry_aln`;
-	`rm $qry_fq_filename`;
+	#`rm $qry_fq_filename`;
 
 	$qbam = $qry_aln.".bam"; # qry BAM
 	
@@ -506,7 +512,7 @@ sub pos2bin {
 ###############################################
 sub sam2bam {
 	my $insam = shift;
-	`samtools view -b -h -@ $threads $insam | samtools sort -o $insam.bam -@ $threads`;
+	`samtools view -b -h -F 0x900 -q 40 -@ $threads $insam | samtools sort -o $insam.bam -@ $threads`;
 	`samtools index $insam.bam`;
 }
 

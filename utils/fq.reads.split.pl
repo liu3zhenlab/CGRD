@@ -25,7 +25,7 @@ if ($help) {
 }
 
 $length = 10000 if (!defined $length or (defined $length and $length==0));
-$min = 100 if (!defined $min);
+$min = 5000 if (!defined $min);
 
 ### count the total sequences:
 my $len;
@@ -44,6 +44,7 @@ while (<IN>) {
 		if ($num_row % 4 == 1) {
 			$raw_read_num++;
 			$seqname = $_;
+			$seqname =~ s/ .*//g; # simply seqname
 			$_ = <IN>; $_ =~ s/\R//g; chomp; $num_row++;
 			$seq = $_;
 			$_ = <IN>; $num_row++; $_ =~ s/\R//g; chomp;
@@ -52,8 +53,8 @@ while (<IN>) {
 
 			my $split_out_nums = &fqsplit($seqname, $seq, $qual, $length, $min);
 			my @split_out_nums = @{$split_out_nums};
-			print join("\t", @split_out_nums);
-			print "\n";
+			#print join("\t", @split_out_nums);
+			#print "\n";
 			$split_read_num += $split_out_nums[0];
 			$discard_bps += $split_out_nums[1];
 		}
@@ -83,7 +84,7 @@ sub fqsplit {
 	my $bps_discarded = 0;
 	if (($cur_seqsize >= $in_min) and ($cur_seqsize <= $length)) {
 		$part++;
-		print "$in_seqname\n";
+		print "$in_seqname-0\n";
 		print "$in_seq\n";
 		print "+\n";
 		print "$in_qual\n";
@@ -94,7 +95,7 @@ sub fqsplit {
 			my $extract_seq = substr($in_seq, 0, $in_tolen, "");
 			my $extract_qual = substr($in_qual, 0, $in_tolen, "");
 			$part++;
-			printf("%s_%s\n", $in_seqname, $part);
+			printf("%s-%s\n", $in_seqname, $part);
 			print "$extract_seq\n";
 			printf("\+\n%s\n", $extract_qual);
 			$bps_discarded = length($in_seq);
