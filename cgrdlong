@@ -14,7 +14,7 @@ use File::Temp;
 use FindBin;
 
 # hard setting
-my $version = "0.3.4";
+my $version = "0.3.5";
 my $klen = 31;
 my $newgrouplabtext = "_TMPNEWGROUP";
 
@@ -284,7 +284,7 @@ if (!defined $sbam) {
 } else {
 	print LOG "the following subjBAM was provide:\n";
 	print LOG "  $sbam\n";
-	$subj_libsize=`samtools flagstat -@ $threads $sbam | grep mapped | head -n 1 | sed 's/ .*//g' 1>>$runlog 2>>$runlog`;
+	$subj_libsize=`samtools flagstat -@ $threads $sbam | grep mapped | head -n 1 | sed 's/ .*//g' 2>>$runlog`;
 	#$subj_libsize= `samtools view -F4 -@ $threads -c $sbam 1>>$runlog 2>>$runlog`;
 }
 
@@ -327,7 +327,7 @@ if (!defined $qbam) {
 } else {
 	print LOG "the following qryBAM was provide:\n";
 	print LOG "  $qbam\n";
-	$qry_libsize = `samtools flagstat -@ $threads $qbam | grep mapped | head -n 1 | sed 's/ .*//g' 1>>$runlog 2>>$runlog`;
+	$qry_libsize = `samtools flagstat -@ $threads $qbam | grep mapped | head -n 1 | sed 's/ .*//g' 2>>$runlog`;
 }
 
 chomp($qry_libsize);

@@ -1,6 +1,9 @@
 ### 1/1/2021
 1. add cgrdlong and related scripts
 
+### v0.3.5 (9/20/2021)
+1. fixed libsize output with BAM files as inputs
+
 ### v0.3.4 (6/30/2021)
 1. added the step to check required software packages
 2. fixed the issue associated with --knum
