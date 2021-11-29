@@ -84,6 +84,11 @@ perl cgrd
 
 **Note**: the installation may take 1-2 hours.
 
+### to-do
+Here is a warning message during the report generation, which does not affect the result but needs to be solved.
+"'mode(width)' and 'mode(height)' differ between new and previous"
+
+
 ### BUG REPORT
 Please report any bugs or suggestion on github or by email to Sanzhen Liu (liu3zhen@ksu.edu).
 
