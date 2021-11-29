@@ -6,6 +6,7 @@ params:
   qry: null
   bc: null
   libsizef: null
+  adj0: null
   chrsizef: null
   groupval: null
   chr2plot: null
@@ -26,6 +27,7 @@ groupval <- params$groupval
 chr2plot <- params$chr2plot
 newgrouplab <- params$newgrouplab
 libsizef <- params$libsizef
+adj0 <- params$adj0
 chrsizef <- params$chrsizef
 outfile <- params$outfile
 pdfWidth <- params$pdfWidth
@@ -57,6 +59,28 @@ Platform and OS system: `r sysinfo$platform` and `r sysinfo$system`
 
 
 ```{r modules, echo = FALSE }
+#################
+# determine xaxis
+#################
+mb_smartaxis <- function(maxnum) {
+  options(scipen=999)
+  numdigits <- nchar(maxnum)
+  unit <- 10 ^ (numdigits - 1) / (2 - round((maxnum / 10 ^ numdigits), 0)) / 1000000 # 1 or 5 e (numdigits - 1)
+  #unit <- 1
+  subunit <- unit / 5 
+  numsat <- unit * (0:10)
+  numsat <- numsat[numsat < maxnum / 1000000]
+
+  label.scale <- "Mb"
+  numlabels <- numsat
+
+  subunits <- seq(0, maxnum / 1000000, by = subunit)
+  subunits <- subunits[!subunits %in% c(numsat, 0)] 
+
+ # return
+  list(numsat, numlabels, label.scale, subunits)
+}
+
 ################
 # draw axis line
 ################
@@ -120,6 +144,18 @@ qry.libsize <- libsize[libsize$sample == qry, "reads"]
 # step2: bincount data qrycountloration
 #######################################
 bincount$log2fc <- log2((bincount[, qry] + 1) / (bincount[, subj] + 1) / qry.libsize * subj.libsize)
+
+if (adj0 == 1) {
+	log2fc_stat <- table(round(bincount$log2fc, 1))
+	deviation_from0 <- as.numeric(names(log2fc_stat)[which.max(log2fc_stat)])
+	bincount$log2fc <- bincount$log2fc - deviation_from0
+	if (abs(deviation_from0) > 1) {
+		cat("Warning: the mode of logRD if fairly far from 0.")
+		cat("\n")
+		cat("All logRD values have been adjusted by substrating", deviation_from0);
+		cat("\n")
+	}
+}
 
 ### histogram
 xlabel <- paste0("Log2(", qry, ":", subj, ")")
@@ -222,14 +258,15 @@ offset <- 14
 
 chrs <- as.character(unique(seg2$Chr))
 num.chrs <- length(chrs)
-if (chr2plot != "all") {
+if (sum(chr2plot %in%  "all") == 0) {
   stopifnot(sum(! chr2plot %in% chrs) == 0)  ### if chr2plot has chr that is not in the chr list
   chrs <- chr2plot
   num.chrs <- length(chr2plot)
   chrsize <- chrsize[chrsize$Chr %in% chr2plot, ]
 }
 
-xmax <- max(chrsize$Len)/xunit
+bp_xmax <- max(chrsize$Len)
+xmax <- bp_xmax/xunit
 
 ##################
 ### save to PDF file
@@ -247,13 +284,19 @@ plot(NULL,NULL,
      xlim=c(xleft, xmax),
      ylim=c(ybottom, ytop),
      main=paste(qry, "vs", subj), cex.main=1.2,
-     bty="n", type="n", yaxt="n",
-     xlab="Physical coordinate (Mb)", ylab="",
-     cex.axis = 1.2, cex.lab = 1.2)
+     bty="n", type="n", xaxt="n", yaxt="n",
+     xlab="", ylab="")
 
-mtext(text = paste0("log2(", qry, ":", subj, ")"), side = 2, line = 3.5, cex = 1.2,
+mtext(text = paste0("log2(", qry, ":", subj, ")"), side=2, line=3.2, cex=1.2,
       at = mean(c(0, num.chrs * offset - offset + 1)))
 
+# x-axis
+xaxis <- mb_smartaxis(bp_xmax)
+axis(1, at=xaxis[[1]], labels=xaxis[[2]], tick=T, col="gray50", cex.axis=1.1)
+mtext(paste0("Physical coordinate (", xaxis[[3]], ")"), side=1, line=3, cex=1.2)
+abline(v=xaxis[[1]], col="grey85", cex=1)
+abline(v=xaxis[[4]], col="grey95", cex=0.5)
+ 
 ##################
 ### plot all chrs and ctgs:
 ##################
@@ -298,11 +341,11 @@ for (j in 1:num.chrs) { # all chrs / contigs
   ##################
   # plot yaxis
   ##################
-   yaxis.pos <- c(-6, -3, 0, 3)
-    label.pos <- c(-6, -3, 0, 3)
-    plotaxis(x=rep(xleft, length(yaxis.pos)), y= yaxis.pos+shift,
-           at.ticks=yaxis.pos+shift, ticklen=xmax/200, tick.labs=label.pos,
-           labeltext=chrs[j])
+  yaxis.pos <- c(-6, -3, 0, 3)
+  label.pos <- c(-6, -3, 0, 3)
+  plotaxis(x=rep(xleft, length(yaxis.pos)), y= yaxis.pos+shift,
+      at.ticks=yaxis.pos+shift, ticklen=xmax/200, tick.labs=label.pos,
+      labeltext=chrs[j])
   
 }
 
@@ -325,7 +368,7 @@ dev.off()
 offset <- 14
 chrs <- as.character(unique(seg2$Chr))
 num.chrs <- length(chrs)
-if (chr2plot != "all") {
+if (sum(chr2plot %in%  "all") == 0) {
   stopifnot(sum(! chr2plot %in% chrs) == 0)  ### if chr2plot has chr that is not in the chr list
   chrs <- chr2plot
   num.chrs <- length(chr2plot)
@@ -392,11 +435,11 @@ for (j in 1:num.chrs) { # all chrs / contigs
   ##################
   # plot yaxis
   ##################
-   yaxis.pos <- c(-6, -3, 0, 3)
-    label.pos <- c(-6, -3, 0, 3)
-    plotaxis(x=rep(xleft, length(yaxis.pos)), y= yaxis.pos+shift,
-           at.ticks=yaxis.pos+shift, ticklen=xmax/200, tick.labs=label.pos,
-           labeltext=chrs[j])
+  yaxis.pos <- c(-6, -3, 0, 3)
+  label.pos <- c(-6, -3, 0, 3)
+  plotaxis(x=rep(xleft, length(yaxis.pos)), y= yaxis.pos+shift,
+       at.ticks=yaxis.pos+shift, ticklen=xmax/200, tick.labs=label.pos,
+       labeltext=chrs[j])
   
 }
 

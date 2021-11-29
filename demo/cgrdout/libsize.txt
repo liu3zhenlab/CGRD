@@ -1,0 +1,3 @@
+sample	reads
+ref	12000
+qry	12000

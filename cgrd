@@ -61,7 +61,8 @@ sub prompt {
 	--mincountBin <num>  bins with counts from "subj" lower than $mincountBin will be excluded ($mincountBin)
 	--maxdistBins <num>  maximum bp distance between neighbor bins after exclusion of unqualified bins ($maxdistBins)
 	                     if the distance is larger than $maxdistBins, two neighbor bins are separated into different groups for segmentation
-	--chr2plot <str>     list of chr or contigs to be plotted, separated by space (all)
+	--adj0               whether the mode of log2RD will be adjusted to 0; off by default
+    --chr2plot <str>     list of chr or contigs to be plotted, separated by space (all)
 	                     e.g., "1 2 3": chromosomes 1, 2, 3 will be plotted
 	--pdfWidth <float>   the width in inch of the output PDF ($pdfWidth)
 	--pdfHeight <float>  the height in inch of the output PDF ($pdfHeight)
@@ -79,7 +80,7 @@ exit;
 
 my ($ref, $subj, $sfq1, $sfq2, $sbam);
 my ($qry, $qfq1, $qfq2, $qbam, $binbed);
-
+my $adj0 = 0;
 
 #############
 # parameters
@@ -89,7 +90,7 @@ my %opts = ();
                     "sfq1=s", "sfq2=s", "qfq1=s", "qfq2=s",
 					"sbam=s", "qbam=s", "knum=i", "binbed=s",
 					"loquantile=f", "hiquantile=f", "chr2plot=s",
-					"pdfWidth=f", "pdfHeight=f",
+					"adj0", "pdfWidth=f", "pdfHeight=f",
 					"mincountBin=i", "maxdistBins=i", "groupval=s", 
 					"threads=i", "prefix=s", "samfilt=s", "cleanup", "help");
 
@@ -113,6 +114,7 @@ $binbed = $opts{binbed} if exists $opts{binbed};
 $threads = $opts{threads} if exists $opts{threads};
 $samfilt = $opts{samfilt} if (exists $opts{samfilt});
 $prefix = $opts{prefix} if (exists $opts{prefix});
+$adj0 = 1 if (exists $opts{adj0});
 
 #log file
 my $runlog = $prefix.".run.log";
@@ -368,6 +370,7 @@ print TMPR "    subj=\"$subj\",\n";
 print TMPR "    qry=\"$qry\",\n";
 print TMPR "    bc=\"$bincount_file\",\n";
 print TMPR "    libsizef=\"$libsizef\",\n";
+print TMPR "    adj0=\"$adj0\",\n";
 print TMPR "    chrsizef=\"$chrsizef\",\n";
 print TMPR "    outfile=\"$outfile\",\n";
 print TMPR "    groupval=\"$groupval\",\n";
