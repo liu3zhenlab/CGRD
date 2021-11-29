@@ -3,7 +3,7 @@ library(knitr)
 
 render('/homes/liu3zhen/scripts2/CGRD/utils/rdseg.Rmd',
   params = list(
-    version="0.3.6",
+    version="0.3.5",
     subj="ref",
     qry="qry",
     bc="cgrdout/cgrdout_3b_bin.counts",

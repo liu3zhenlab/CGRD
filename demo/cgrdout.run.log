@@ -1,29 +1,29 @@
-o 2021-11-28 20:39:00
+o 2021-11-29 11:29:29
     required R packages installed.
-o 2021-11-28 20:39:00
+o 2021-11-29 11:29:29
     yeah! software requirements checked.
-o 2021-11-28 20:39:00
+o 2021-11-29 11:29:30
     generating k-mers from reference.
     ./genome/ref.fasta
-o 2021-11-28 20:57:36
+o 2021-11-29 12:02:54
     mapping k-mers to reference.
-o 2021-11-28 20:57:54
+o 2021-11-29 12:03:04
     generaring bin BED file.
-o 2021-11-28 20:57:55
+o 2021-11-29 12:03:04
     bwa indexing.
-o 2021-11-28 20:57:58
+o 2021-11-29 12:03:07
     processing subj reads.
-o 2021-11-28 20:57:58
+o 2021-11-29 12:03:07
     subj alignment.
-o 2021-11-28 20:58:06
+o 2021-11-29 12:03:12
     processing query reads.
-o 2021-11-28 20:58:06
+o 2021-11-29 12:03:12
     query alignment.
-o 2021-11-28 20:58:10
+o 2021-11-29 12:03:19
     Bedtools counting.
-o 2021-11-28 20:58:12
+o 2021-11-29 12:03:21
     Bin filtering.
-o 2021-11-28 20:58:13
+o 2021-11-29 12:03:21
     Segmentation with R.
 ases	60
 #mismatched value (include INDEL penalty) out of matched bases	5 100
@@ -33,8 +33,8 @@ ases	60
 #minimum mapping score of each read	40
 [main] Version: 0.7.17-r1188
 [main] CMD: bwa mem -v 1 -t 1 -T 40 cgrdout/bwa/ref ./reads/qry.1.fastq
-[main] Real time: 0.750 sec; CPU: 0.588 sec
-#11/28/2021 20:58:7 Sun
+[main] Real time: 0.738 sec; CPU: 0.617 sec
+#11/29/2021 12:3:13 Mon
 #---- Parse criteria -----
 #minimum number of identical bases	60
 #mismatched value (include INDEL penalty) out of matched bases	5 100
@@ -139,7 +139,7 @@ List of 8
 
 output file: rdseg.knit.md
 
-/homes/liu3zhen/.conda/envs/cgrd/bin/pandoc +RTS -K512m -RTS rdseg.utf8.md --to html4 --from markdown+autolink_bare_uris+ascii_identifiers+tex_math_single_backslash+smart --output /homes/liu3zhen/scripts2/CGRD/demo/cgrdout_qry_ref.report.html --email-obfuscation none --self-contained --standalone --section-divs --template /homes/liu3zhen/.conda/envs/cgrd/lib/R/library/rmarkdown/rmd/h/default.html --no-highlight --variable highlightjs=1 --variable 'theme:bootstrap' --include-in-header /tmp/RtmpSgeQ1p/rmarkdown-str2d7b77d6a20.html --mathjax --variable 'mathjax-url:https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML' 
+/homes/liu3zhen/.conda/envs/cgrd/bin/pandoc +RTS -K512m -RTS rdseg.utf8.md --to html4 --from markdown+autolink_bare_uris+ascii_identifiers+tex_math_single_backslash+smart --output /homes/liu3zhen/scripts2/CGRD/demo/cgrdout_qry_ref.report.html --email-obfuscation none --self-contained --standalone --section-divs --template /homes/liu3zhen/.conda/envs/cgrd/lib/R/library/rmarkdown/rmd/h/default.html --no-highlight --variable highlightjs=1 --variable 'theme:bootstrap' --include-in-header /tmp/RtmpURXUJi/rmarkdown-str6ab824a6aeb5.html --mathjax --variable 'mathjax-url:https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML' 
 
 Output created: cgrdout_qry_ref.report.html
 Warning message:

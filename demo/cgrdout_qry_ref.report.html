@@ -10,7 +10,7 @@
 
 
 
-<meta name="date" content="2021-11-28" />
+<meta name="date" content="2021-11-29" />
 
 <title>Genome comparison through CGRD</title>
 
@@ -190,14 +190,14 @@ $(document).ready(function () {
 
 
 <h1 class="title toc-ignore">Genome comparison through CGRD</h1>
-<h4 class="date">28 November 2021</h4>
+<h4 class="date">29 November 2021</h4>
 
 </div>
 
 
 <div id="rationale" class="section level4">
 <h4>Rationale</h4>
-<p>CGRD (0.3.6) (github.com/liu3zhenlab/CGRD) was dedicated to find copy number variation (CNV) through comparing depths of sequencing reads from two genotypes (ref and qry). Briefly, first, a reference genome is scanned to identify non-repetitive sequence bins (windows). Reads are aligned to the reference genome and read counts are determined for each bin. The log2 of the ratio of normalized read counts (or read depths) of qry to ref per bin is calculated, referred to as the log ratio or <strong>logRD</strong>. LogRD values were then used for the segmentation that combines continuous bins with similar logRD values. The mean logRD value per segment is the indication for CNV between ref and qry of the segment. For a segment, the logRD is close to zero if the sequences of ref and qry are identical and no CNVs. The sufficient derivation of the mean of logRD from zero is likely due to CNV.</p>
+<p>CGRD (0.3.5) (github.com/liu3zhenlab/CGRD) was dedicated to find copy number variation (CNV) through comparing depths of sequencing reads from two genotypes (ref and qry). Briefly, first, a reference genome is scanned to identify non-repetitive sequence bins (windows). Reads are aligned to the reference genome and read counts are determined for each bin. The log2 of the ratio of normalized read counts (or read depths) of qry to ref per bin is calculated, referred to as the log ratio or <strong>logRD</strong>. LogRD values were then used for the segmentation that combines continuous bins with similar logRD values. The mean logRD value per segment is the indication for CNV between ref and qry of the segment. For a segment, the logRD is close to zero if the sequences of ref and qry are identical and no CNVs. The sufficient derivation of the mean of logRD from zero is likely due to CNV.</p>
 </div>
 <div id="running-environment" class="section level4">
 <h4>Running environment</h4>
