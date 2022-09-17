@@ -8,6 +8,9 @@ CGRD is a pipeline to compare sequencing read depths from two samples along a re
 
 From the result, genomic segments with similar and differential (higher or lower) read depths are obtained. Therefore, genomic copy number variation (CNV) based on read depths can be extracted from the result and visualized on the genome map.
 
+### CITATION
+G Lin, C He, J Zheng, DH Koo, H Le, H Zheng, D Koo, H Le, H Zheng, TM Tamang, J Lin, Y Liu, M Zhao, Y Hao, F McFarland, B Wang, Y Qin, H Tang, DR McCarty, H Wei, MJ Cho, S Park, H Kaeppler, S Kaeppler, Y Liu, NM Springer, PS Schnable, G Wang, FF White, S Liu. (2021). Chromosome-level genome assembly of a regenerable maize inbred line A188, Genome Biology, 22:175
+
 ### VERSIONS
 v0.3.6: add a step to check if input files exist and fix a bug for version checking
 v0.3.5: add the parameter of --adj0 to allow a further adjustment of the logRD mode to 0  
@@ -88,7 +91,6 @@ perl cgrd
 ### to-do
 Here is a warning message during the report generation, which does not affect the result but needs to be solved.
 "'mode(width)' and 'mode(height)' differ between new and previous"
-
 
 ### BUG REPORT
 Please report any bugs or suggestion on github or by email to Sanzhen Liu (liu3zhen@ksu.edu).
