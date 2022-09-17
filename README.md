@@ -9,6 +9,7 @@ CGRD is a pipeline to compare sequencing read depths from two samples along a re
 From the result, genomic segments with similar and differential (higher or lower) read depths are obtained. Therefore, genomic copy number variation (CNV) based on read depths can be extracted from the result and visualized on the genome map.
 
 ### VERSIONS
+v0.3.6: add a step to check if input files exist and fix a bug for version checking
 v0.3.5: add the parameter of --adj0 to allow a further adjustment of the logRD mode to 0  
 v0.3.4: added the step to check required software packages and fixed the issue associated with --knum  
 

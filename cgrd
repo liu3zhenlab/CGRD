@@ -14,7 +14,7 @@ use File::Temp;
 use FindBin;
 
 # hard setting
-my $version = "0.3.5";
+my $version = "0.3.6";
 my $klen = 31;
 my $newgrouplabtext = "_TMPNEWGROUP";
 
@@ -62,7 +62,7 @@ sub prompt {
 	--maxdistBins <num>  maximum bp distance between neighbor bins after exclusion of unqualified bins ($maxdistBins)
 	                     if the distance is larger than $maxdistBins, two neighbor bins are separated into different groups for segmentation
 	--adj0               whether the mode of log2RD will be adjusted to 0; off by default
-    --chr2plot <str>     list of chr or contigs to be plotted, separated by space (all)
+	--chr2plot <str>     list of chr or contigs to be plotted, separated by space (all)
 	                     e.g., "1 2 3": chromosomes 1, 2, 3 will be plotted
 	--pdfWidth <float>   the width in inch of the output PDF ($pdfWidth)
 	--pdfHeight <float>  the height in inch of the output PDF ($pdfHeight)
@@ -86,7 +86,7 @@ my $adj0 = 0;
 # parameters
 ############# 
 my %opts = ();
-&GetOptions(\%opts, "ref=s", "subj=s", "qry=s", "version=s",
+&GetOptions(\%opts, "ref=s", "subj=s", "qry=s", "version",
                     "sfq1=s", "sfq2=s", "qfq1=s", "qfq2=s",
 					"sbam=s", "qbam=s", "knum=i", "binbed=s",
 					"loquantile=f", "hiquantile=f", "chr2plot=s",
@@ -100,13 +100,21 @@ if (exists $opts{version}) {
 }
 
 &prompt if exists $opts{help} or !%opts;
-$ref = $opts{ref} if exists $opts{ref};
+if ( exists $opts{ref} ) {
+	$ref = $opts{ref};
+}
 $subj = $opts{subj} if exists $opts{subj};
 $qry = $opts{qry} if exists $opts{qry};
 $sfq1 = $opts{sfq1} if exists $opts{sfq1};
-exists $opts{sfq2} ? $sfq2 = $opts{sfq2} : $sfq2 = "";;
+$sfq2 = "";
+if (exists $opts{sfq2}) {
+	$sfq2 = $opts{sfq2}
+}
 $qfq1 = $opts{qfq1} if exists $opts{qfq1};
-exists $opts{qfq2} ? $qfq2 = $opts{qfq2} : $qfq2 = "";
+$qfq2 = "";
+if (exists $opts{qfq2}) {
+	$qfq2 = $opts{qfq2}
+}
 $sbam = $opts{sbam} if exists $opts{sbam};
 $qbam = $opts{qbam} if exists $opts{qbam};
 $knum = $opts{knum} if exists $opts{knum};
@@ -182,9 +190,26 @@ if ($rpackage_check eq "Passed") {
 
 &runreport("yeah! software requirements checked");
 
-#############
+#############################################
+# check if all input exist
+#############################################
+&file_check($sfq1);
+if (exists $opts{sfq2}) {
+	&file_check($sfq2);
+}
+
+&file_check($qfq1);
+if (exists $opts{qfq2}) {
+	&file_check($qfq2);
+}
+
+&file_check($ref);
+
+&runreport("Hooray! All input files exist");
+
+#############################################
 # output
-#############
+#############################################
 if (-d $prefix) {
 	print STDERR "$prefix exists!\n";
 	#exit;
@@ -555,4 +580,15 @@ sub runreport {
 	print LOG "  $injob.\n";
 }
 
+###############################################
+# module 8: check if a input file exists
+################################################
+sub file_check {
+	my $in_file = shift;
+	if (!-f $in_file) {# not founded
+		print STDERR RED, "  $in_file does not exist\n", RESET;
+		print STDERR RED, "Exit\n", RESET;
+		exit;
+	}
+}
 
