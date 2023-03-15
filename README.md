@@ -53,7 +53,6 @@ The following packages are required:
 8. R pakages: rmarkdown, knitr, DNAcopy
 
 If all the packages are installed and commands are in the paths. You can directly copy CGRD for your uses.
-
 ```
 git clone https://github.com/liu3zhenlab/CGRD.git
 cd CGRD
@@ -62,15 +61,10 @@ perl cgrd
 
 #### conda installation
 ```
-conda create -n cgrd
-conda activate cgrd
-conda install -c bioconda jellyfish bowtie bwa bedtools pandoc samtools=1.9 minimap2
-conda install -c r r-base r-knitr r-rmarkdown
-conda install -c bioconda bioconductor-DNAcopy
-
-# after all the installation:
 git clone https://github.com/liu3zhenlab/CGRD.git
 cd CGRD
+conda env create -f cgrd.yml
+conda activate cgrd
 perl cgrd
 ```
 
@@ -99,4 +93,4 @@ Please report any bugs or suggestion on github or by email to Sanzhen Liu (liu3z
 CGRD is distributed under MIT licence.
 
 ### CONTRIBUTIONS
-The idea was developed by Sanzhen Liu when he was in Schnable lab at Iowa State University. Guifang Lin tested the scripts. Thanks suggestions from Ha Le.
+The idea was developed by Sanzhen Liu when he was in Schnable lab at Iowa State University. Guifang Lin tested the scripts. Thank suggestions from Ha Le.
