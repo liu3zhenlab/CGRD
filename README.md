@@ -68,6 +68,20 @@ conda activate cgrd
 perl cgrd
 ```
 
+#### An alternative conda installation
+```
+conda create -n cgrd
+conda activate cgrd
+conda install -c bioconda jellyfish bowtie bwa bedtools pandoc samtools=1.9 minimap2
+conda install -c r r-base r-knitr r-rmarkdown
+conda install -c bioconda bioconductor-DNAcopy
+
+# after all the installation:
+git clone https://github.com/liu3zhenlab/CGRD.git
+cd CGRD
+perl cgrd
+```
+
 #### tested package versions
 1. jellyfish-2.2.10
 2. bowtie-1.2.3
