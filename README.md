@@ -12,8 +12,8 @@ From the result, genomic segments with similar and differential (higher or lower
 G Lin, C He, J Zheng, DH Koo, H Le, H Zheng, D Koo, H Le, H Zheng, TM Tamang, J Lin, Y Liu, M Zhao, Y Hao, F McFarland, B Wang, Y Qin, H Tang, DR McCarty, H Wei, MJ Cho, S Park, H Kaeppler, S Kaeppler, Y Liu, NM Springer, PS Schnable, G Wang, FF White, S Liu. (2021). Chromosome-level genome assembly of a regenerable maize inbred line A188, Genome Biology, 22:175
 
 ### VERSIONS
-v0.3.6: add a step to check if input files exist and fix a bug for version checking
-v0.3.5: add the parameter of --adj0 to allow a further adjustment of the logRD mode to 0  
+v0.3.6: added a step to check if input files exist and fix a bug for version checking  
+v0.3.5: added the parameter of --adj0 to allow a further adjustment of the logRD mode to 0  
 v0.3.4: added the step to check required software packages and fixed the issue associated with --knum  
 
 ### DATA REQUIREMENT
