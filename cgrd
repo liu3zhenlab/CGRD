@@ -193,14 +193,28 @@ if ($rpackage_check eq "Passed") {
 #############################################
 # check if all input exist
 #############################################
-&file_check($sfq1);
-if (exists $opts{sfq2}) {
+if (defined $sfq1) {
+	&file_check($sfq1);
+}
+
+if (defined $sfq2) {
 	&file_check($sfq2);
 }
 
-&file_check($qfq1);
-if (exists $opts{qfq2}) {
+if (defined $qfq1) {
+	&file_check($qfq1);
+}
+
+if (defined $qfq2) {
 	&file_check($qfq2);
+}
+
+if (defined $sbam) {
+	&file_check($sbam);
+}
+
+if (defined $qbam) {
+	&file_check($qbam);
 }
 
 &file_check($ref);
