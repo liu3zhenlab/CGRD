@@ -14,7 +14,7 @@ use File::Temp;
 use FindBin;
 
 # hard setting
-my $version = "0.3.6";
+my $version = "0.3.7";
 my $klen = 31;
 my $newgrouplabtext = "_TMPNEWGROUP";
 
