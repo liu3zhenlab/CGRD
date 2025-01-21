@@ -197,7 +197,7 @@ if (defined $sfq1) {
 	&file_check($sfq1);
 }
 
-if (defined $sfq2) {
+if (defined $sfq2 and $sfq2 ne "") {
 	&file_check($sfq2);
 }
 
@@ -205,7 +205,7 @@ if (defined $qfq1) {
 	&file_check($qfq1);
 }
 
-if (defined $qfq2) {
+if (defined $qfq2 and $qfq2 ne "") {
 	&file_check($qfq2);
 }
 
